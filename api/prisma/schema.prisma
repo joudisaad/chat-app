@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  sender    String
+  roomId    String
+
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    String
+}
+
+model Conversation {
+  id            String   @id @default(uuid())
+  roomId        String   @unique
+  lastSender    String?
+  lastPreview   String?
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  team      Team   @relation(fields: [teamId], references: [id])
+  teamId    String
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  memberships  TeamMembership[]
+}
+
+model Team {
+  id        String          @id @default(uuid())
+  name      String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  memberships   TeamMembership[]
+  conversations Conversation[]
+  messages      Message[]      // 👈 add this line
+}
+
+model TeamMembership {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  role      String   // "owner" | "admin" | "agent"
+  createdAt DateTime @default(now())
+}
