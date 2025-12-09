@@ -14,8 +14,8 @@ model Message {
   sender    String
   roomId    String
 
-  team      Team     @relation(fields: [teamId], references: [id])
-  teamId    String
+  team   Team   @relation(fields: [teamId], references: [id])
+  teamId String
 }
 
 model Conversation {
@@ -26,30 +26,34 @@ model Conversation {
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
 
-  team      Team   @relation(fields: [teamId], references: [id])
-  teamId    String
+  team   Team   @relation(fields: [teamId], references: [id])
+  teamId String
 }
 
 model User {
-  id           String          @id @default(uuid())
-  email        String          @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   passwordHash String
   name         String
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberships  TeamMembership[]
+  memberships TeamMembership[]
 }
 
 model Team {
-  id        String          @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  publicKey String? @unique
 
   memberships   TeamMembership[]
   conversations Conversation[]
-  messages      Message[]      // 👈 add this line
+  messages      Message[]
+
+  widgetSettings WidgetSettings? // 👈 add this line
 }
 
 model TeamMembership {
@@ -58,6 +62,19 @@ model TeamMembership {
   userId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
-  role      String   // "owner" | "admin" | "agent"
+  role      String // "owner" | "admin" | "agent"
   createdAt DateTime @default(now())
+}
+
+model WidgetSettings {
+  id        String   @id @default(uuid())
+  teamId    String   @unique
+  team      Team     @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  launcherColor     String @default("#22c55e")
+  launcherTextColor String @default("#020617")
+  launcherPosition  String @default("right") // "right" | "left"
+  launcherLabel     String @default("Chat")
 }

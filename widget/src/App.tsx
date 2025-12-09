@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { io, Socket } from "socket.io-client";
 
 const API_URL = "http://localhost:3000";
 const ROOM_KEY = "chatapp_room_id";
-// ⚠️ pour l’instant, on met le teamId en dur (dev) TODO
-const TEAM_ID = "55477d08-d071-4c95-b4d0-ecb46c6bf6be"; // remplace par le tien
+
+// for TypeScript, declare global var used in install snippet
+declare global {
+  interface Window {
+    CHATAPP_KEY?: string;
+  }
+}
+
 interface Message {
   id: string;
   content: string;
@@ -13,41 +19,81 @@ interface Message {
   createdAt: string;
 }
 
+interface WidgetConfig {
+  launcherColor?: string;
+  launcherTextColor?: string;
+  launcherPosition?: "left" | "right";
+  launcherLabel?: string;
+}
+
 function App() {
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [name, setName] = useState("Visitor");
   const [open, setOpen] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [widgetConfig, setWidgetConfig] = useState<WidgetConfig | null>(null);
+
   const socketRef = useRef<Socket | null>(null);
 
-  // Create or load a roomId for this visitor
+  // 1) Initialize roomId from localStorage
   useEffect(() => {
-    let stored = window.localStorage.getItem(ROOM_KEY);
+    let stored = localStorage.getItem(ROOM_KEY);
     if (!stored) {
       stored = `room_${crypto.randomUUID()}`;
-      window.localStorage.setItem(ROOM_KEY, stored);
+      localStorage.setItem(ROOM_KEY, stored);
     }
     setRoomId(stored);
   }, []);
 
-  // Connect socket + load history once roomId is known
+  // 2) Resolve site key → teamId + widget config
   useEffect(() => {
-    if (!roomId) return;
+    const siteKey = window.CHATAPP_KEY || "";
 
+    if (!siteKey) {
+      setConfigError("Missing CHATAPP_KEY on window.");
+      setLoadingConfig(false);
+      return;
+    }
+
+    fetch(`${API_URL}/public/site/${encodeURIComponent(siteKey)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Invalid site key");
+        return res.json();
+      })
+      .then(
+        (data: {
+          teamId: string;
+          widget?: WidgetConfig | null;
+        }) => {
+          setTeamId(data.teamId);
+          setWidgetConfig(data.widget ?? null);
+          setConfigError(null);
+        },
+      )
+      .catch((err) => {
+        console.error("Site key error", err);
+        setConfigError("Invalid or unknown site key.");
+      })
+      .finally(() => {
+        setLoadingConfig(false);
+      });
+  }, []);
+
+  // 3) When we have both roomId + teamId → connect socket + load history
+  useEffect(() => {
+    if (!roomId || !teamId) return;
     const socket = io(API_URL, {
       transports: ["websocket"],
-      auth: { teamId: TEAM_ID },
+      auth: { teamId },
     });
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      setConnected(true);
       socket.emit("join", roomId);
     });
-
-    socket.on("disconnect", () => setConnected(false));
 
     socket.on("new_message", (msg: Message) => {
       if (msg.roomId === roomId) {
@@ -55,45 +101,71 @@ function App() {
       }
     });
 
-    // history
+    // load history for this room from public endpoint
     fetch(`${API_URL}/messages/public?roomId=${encodeURIComponent(roomId)}`)
-      .then((r) => r.json())
+      .then((res) => res.json())
       .then((data: Message[]) => setMessages(data))
-      .catch((e) => console.error(e));
+      .catch((err) => console.error("History error", err));
 
-    return () => socket.disconnect();
-  }, [roomId]);
+    return () => {
+      socket.disconnect();
+    };
+  }, [roomId, teamId]);
 
   const sendMessage = () => {
     if (!input.trim() || !socketRef.current || !roomId) return;
     socketRef.current.emit("send_message", {
       roomId,
       content: input.trim(),
-      sender: name || "Visitor",
+      sender: "Visitor",
     });
     setInput("");
   };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  if (loadingConfig) {
+    return null; // widget stays hidden while loading config
+  }
+
+  if (configError) {
+    console.error(configError);
+    return null; // or show a small error badge in dev
+  }
+
+  // derive launcher style from widget config
+  const launcherBg = widgetConfig?.launcherColor || "#22c55e";
+  const launcherText = widgetConfig?.launcherTextColor || "#020617";
+  const launcherPos: "left" | "right" =
+    widgetConfig?.launcherPosition === "left" ? "left" : "right";
+  const launcherLabel = widgetConfig?.launcherLabel || "Chat";
+
   return (
     <>
-      {/* Floating bubble */}
+      {/* floating button */}
       <button
-        onClick={() => setOpen((o) => !o)}
         style={{
           position: "fixed",
-          right: 24,
+          [launcherPos]: 24,
           bottom: 24,
           width: 56,
           height: 56,
           borderRadius: "999px",
           border: "none",
-          background: "#22c55e",
-          color: "#020617",
-          fontWeight: 700,
-          fontSize: 18,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+          background: launcherBg,
+          color: launcherText,
+          fontSize: 24,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
           cursor: "pointer",
+          zIndex: 9999,
         }}
+        onClick={() => setOpen((o) => !o)}
+        aria-label={launcherLabel}
       >
         💬
       </button>
@@ -102,103 +174,83 @@ function App() {
         <div
           style={{
             position: "fixed",
-            right: 24,
+            [launcherPos]: 24,
             bottom: 96,
-            width: 360,
-            maxHeight: 480,
-            background: "#020617",
-            color: "white",
+            width: 340,
+            height: 420,
+            background: "#0b1120",
             borderRadius: 16,
             border: "1px solid #1f2937",
+            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            overflow: "hidden",
-            boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
-            fontFamily: "system-ui, sans-serif",
+            color: "white",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+            zIndex: 9999,
           }}
         >
           <header
             style={{
               padding: "10px 14px",
               borderBottom: "1px solid #1f2937",
+              fontSize: 14,
+              fontWeight: 600,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              fontSize: 13,
             }}
           >
-            <div>
-              <div style={{ fontWeight: 600 }}>Chat with us</div>
-              <div style={{ opacity: 0.7, fontSize: 11 }}>
-                Room: {roomId ?? "…"}
-              </div>
-            </div>
-            <div
+            <span>Chat with us</span>
+            <span
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11,
+                fontSize: 10,
+                opacity: 0.7,
               }}
             >
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "999px",
-                  background: connected ? "#22c55e" : "#f97316",
-                }}
-              />
-              {connected ? "Online" : "Offline"}
-            </div>
+              #{roomId?.slice(-6)}
+            </span>
           </header>
-
-          <div style={{ padding: "6px 10px", fontSize: 11 }}>
-            <label>
-              Your name:{" "}
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{
-                  background: "#020617",
-                  borderRadius: 6,
-                  border: "1px solid #1f2937",
-                  padding: "4px 6px",
-                  color: "white",
-                  fontSize: 11,
-                }}
-              />
-            </label>
-          </div>
 
           <div
             style={{
               flex: 1,
-              padding: "6px 10px 10px",
+              padding: "8px 10px 10px",
               overflowY: "auto",
-              fontSize: 12,
+              fontSize: 13,
             }}
           >
+            {messages.length === 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  opacity: 0.7,
+                  marginTop: 8,
+                }}
+              >
+                Hi 👋 Tell us how we can help you.
+              </div>
+            )}
             {messages.map((m) => (
               <div
                 key={m.id}
                 style={{
-                  marginBottom: 6,
+                  marginBottom: 8,
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: m.sender === name ? "flex-end" : "flex-start",
+                  justifyContent:
+                    m.sender === "Visitor" ? "flex-end" : "flex-start",
                 }}
               >
                 <div
                   style={{
-                    maxWidth: "80%",
+                    maxWidth: "75%",
                     padding: "6px 9px",
-                    borderRadius: 10,
+                    borderRadius: 12,
                     background:
-                      m.sender === name
-                        ? "#22c55e"
-                        : "rgba(148,163,184,0.16)",
-                    color: m.sender === name ? "#020617" : "white",
+                      m.sender === "Visitor"
+                        ? launcherBg
+                        : "rgba(148, 163, 184, 0.22)",
+                    color: m.sender === "Visitor" ? launcherText : "#e5e7eb",
                   }}
                 >
                   <div
@@ -227,29 +279,31 @@ function App() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type a message..."
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
               style={{
                 flex: 1,
                 background: "#020617",
                 borderRadius: 999,
                 border: "1px solid #1f2937",
-                padding: "7px 10px",
                 color: "white",
-                fontSize: 12,
+                padding: "8px 10px",
+                fontSize: 13,
+                outline: "none",
               }}
             />
             <button
               onClick={sendMessage}
+              disabled={!input.trim()}
               style={{
                 borderRadius: 999,
-                padding: "7px 12px",
                 border: "none",
-                background: "#22c55e",
-                color: "#020617",
-                fontSize: 12,
+                background: input.trim() ? launcherBg : "#1f2937",
+                color: input.trim() ? launcherText : "#64748b",
+                padding: "8px 12px",
+                fontSize: 13,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: input.trim() ? "pointer" : "not-allowed",
               }}
             >
               Send
