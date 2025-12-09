@@ -53,7 +53,7 @@ model Team {
   conversations Conversation[]
   messages      Message[]
 
-  widgetSettings WidgetSettings? // 👈 add this line
+  widgetSettings WidgetSettings?
 }
 
 model TeamMembership {

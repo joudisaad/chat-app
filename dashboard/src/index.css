@@ -1,68 +1,250 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "Avenir", Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* DEFAULT (DARK THEME) COLORS */
+  --bg-main: #020617;           /* Whole app background */
+  --bg-panel: #0f172a;          /* Inbox list, messages list */
+  --bg-subpanel: #1e293b;       /* Input areas, search bar, etc */
+  --bg-bubble-agent: #22c55e;   /* Agent message bubble */
+  --bg-bubble-visitor: #1e293b; /* Visitor message bubble */
+
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --border-color: rgba(255,255,255,0.1);
+
+  /* Sidebar / navigation tokens (dark by default) */
+  --nav-bg: #020617;
+  --nav-text: #e5e7eb;
+  --nav-muted: #64748b;
+  --nav-active-bg: #111827;
+  --nav-active-text: #f9fafb;
+  --nav-active-border: #22c55e;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* LIGHT THEME OVERRIDES */
+html[data-theme="light"] {
+  --bg-main: #f3f4f6;
+  --bg-panel: #ffffff;
+  --bg-subpanel: #f0f0f0;
+  --bg-bubble-agent: #22c55e;
+  --bg-bubble-visitor: #e5e7eb;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border-color: rgba(0,0,0,0.1);
+
+  /* Sidebar / navigation tokens (light overrides) */
+  --nav-bg: #ffffff;
+  --nav-text: #111827;
+  --nav-muted: #9ca3af;
+  --nav-active-bg: #e5f3ff;
+  --nav-active-text: #111827;
+  --nav-active-border: #3b82f6;
 }
-a:hover {
-  color: #535bf2;
+
+/* Base layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+/* Panels use variables instead of hardcoded colors */
+.panel {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.subpanel {
+  background: var(--bg-subpanel);
+}
+
+.bubble-agent {
+  background: var(--bg-bubble-agent);
+  color: #fff;
+}
+
+.bubble-visitor {
+  background: var(--bg-bubble-visitor);
+  color: var(--text-primary);
+}
+
+input, textarea {
+  background: var(--bg-subpanel);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* Sidebar layout using centralized nav tokens */
+.sidebar {
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+
+.sidebar-item {
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  color: var(--nav-muted);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.sidebar-item-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nav-muted);
+}
+
+.sidebar-item-label {
+  white-space: nowrap;
+}
+
+/* ACTIVE state – keeps text visible in light mode */
+.sidebar-item--active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  border: 1px solid var(--nav-active-border);
+}
+
+.sidebar-item--active .sidebar-item-icon,
+.sidebar-item--active .sidebar-item-label {
+  color: var(--nav-active-text);
+}
+
+/* Sidebar brand elements (logo + workspace avatar) */
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #22d3ee, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #020617;
+}
+
+.sidebar-workspace-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 0, #22c55e, #16a34a 60%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #022c22;
+}
+
+/* Optional: refine hover state for nav items for a more polished feel */
+.sidebar-item:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--nav-text);
+}
+
+html[data-theme="light"] .sidebar-item:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+/* --- Refined sidebar styling (Crisp-like pills, no hard borders) --- */
+
+/* Ensure sidebar background is clean and driven by tokens */
+.sidebar {
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+
+/* Core nav item layout */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--nav-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background 0.15s ease-out,
+    color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    transform 0.08s ease-out;
+}
+
+/* Icon container */
+.sidebar-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: inherit;
+}
+
+/* Label truncation */
+.sidebar-item-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* Hover state */
+.sidebar-item:hover {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--nav-text);
+}
+
+/* Active state: soft pill, subtle shadow */
+.sidebar-item--active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03), 0 6px 18px rgba(15, 23, 42, 0.16);
+  transform: translateY(-0.5px);
+}
+
+/* Active icon + label inherit the active color */
+.sidebar-item--active .sidebar-item-icon,
+.sidebar-item--active .sidebar-item-label {
+  color: inherit;
+}
+
+/* Light mode tweaks: softer hover / active */
+html[data-theme="light"] .sidebar-item:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+html[data-theme="light"] .sidebar-item--active {
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.25), 0 6px 18px rgba(15, 23, 42, 0.18);
 }

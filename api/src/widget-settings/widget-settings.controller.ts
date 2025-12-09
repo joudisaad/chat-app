@@ -1,30 +1,44 @@
-import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
+// api/src/widget-settings/widget-settings.controller.ts
+import {
+  Body,
+  Controller,
+  Get,
+  Put,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { WidgetSettingsService } from './widget-settings.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { UpdateWidgetSettingsDto } from './dto/update-widget-settings.dto';
+
+interface AuthRequest extends Request {
+  user?: { teamId: string };
+}
 
 @Controller('widget-settings')
 @UseGuards(JwtAuthGuard)
 export class WidgetSettingsController {
-  constructor(private service: WidgetSettingsService) {}
+  constructor(private readonly widgetSettingsService: WidgetSettingsService) {}
 
   @Get()
-  async getMySettings(@Req() req: any) {
-    const teamId = req.user.teamId as string;
-    return this.service.getForTeam(teamId); // 👈 renvoie un objet JSON
+  async getSettings(@Req() req: AuthRequest) {
+    const teamId = req.user?.teamId;
+    if (!teamId) {
+      // should never happen if JwtAuthGuard attaches user
+      throw new Error('Missing teamId on user');
+    }
+    return this.widgetSettingsService.getForTeam(teamId);
   }
 
   @Put()
-  async updateMySettings(
-    @Req() req: any,
-    @Body()
-    body: {
-      launcherColor?: string;
-      launcherTextColor?: string;
-      launcherPosition?: 'left' | 'right';
-      launcherLabel?: string;
-    },
+  async updateSettings(
+    @Req() req: AuthRequest,
+    @Body() body: UpdateWidgetSettingsDto,
   ) {
-    const teamId = req.user.teamId as string;
-    return this.service.updateForTeam(teamId, body); // 👈 renvoie aussi un objet JSON
+    const teamId = req.user?.teamId;
+    if (!teamId) {
+      throw new Error('Missing teamId on user');
+    }
+    return this.widgetSettingsService.updateForTeam(teamId, body);
   }
 }

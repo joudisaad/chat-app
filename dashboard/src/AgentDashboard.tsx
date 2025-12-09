@@ -1,5 +1,6 @@
 // src/AgentDashboard.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { io, type Socket } from "socket.io-client";
 import type { Team } from "./App";
 
 interface Conversation {
@@ -33,11 +34,16 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Socket.io client for real-time updates
+  const socketRef = useRef<Socket | null>(null);
+  const activeRoomRef = useRef<string | null>(null);
+
   const token =
     typeof window !== "undefined"
       ? window.localStorage.getItem("CHATAPP_TOKEN")
       : null;
 
+  // Load conversations once we have a token
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -58,9 +64,13 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
           }
         }
       } catch (e: any) {
-        if (!cancelled) setError(e.message || "Failed to load conversations");
+        if (!cancelled) {
+          setError(e.message || "Failed to load conversations");
+        }
       } finally {
-        if (!cancelled) setLoadingConvos(false);
+        if (!cancelled) {
+          setLoadingConvos(false);
+        }
       }
     }
 
@@ -71,6 +81,69 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Keep a ref of the active room for use in socket handlers
+  useEffect(() => {
+    activeRoomRef.current = activeRoomId;
+  }, [activeRoomId]);
+
+  // Connect to Socket.io for real-time messages
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const socket = io(API_URL, {
+      transports: ["websocket"],
+      auth: { token },
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket connect error", err);
+    });
+
+    const handleNewMessage = (msg: Message) => {
+      // Update messages in the currently active room
+      if (activeRoomRef.current && msg.roomId === activeRoomRef.current) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+
+      // Keep conversation previews in sync
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.roomId === msg.roomId
+            ? {
+                ...c,
+                lastPreview: msg.content,
+                lastSender: msg.sender,
+                lastMessageAt: msg.createdAt,
+              }
+            : c
+        )
+      );
+    };
+
+    socket.on("new_message", handleNewMessage);
+
+    return () => {
+      socket.off("new_message", handleNewMessage);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [token]);
+
+  // Join the active room on the socket whenever it changes
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !activeRoomId) return;
+    socket.emit("join", activeRoomId);
+  }, [activeRoomId]);
+
+  // Load history for the active room via HTTP
   useEffect(() => {
     if (!token || !activeRoomId) {
       setMessages([]);
@@ -92,9 +165,13 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
         const data = (await res.json()) as Message[];
         if (!cancelled) setMessages(data);
       } catch (e: any) {
-        if (!cancelled) setError(e.message || "Failed to load messages");
+        if (!cancelled) {
+          setError(e.message || "Failed to load messages");
+        }
       } finally {
-        if (!cancelled) setLoadingMessages(false);
+        if (!cancelled) {
+          setLoadingMessages(false);
+        }
       }
     }
 
@@ -109,6 +186,44 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
     const content = input.trim();
     setInput("");
 
+    const socket = socketRef.current;
+
+    // Prefer real-time via Socket.io
+    if (socket && socket.connected) {
+      try {
+        socket.emit("send_message", {
+          roomId: activeRoomId,
+          content,
+          sender: "Agent",
+        });
+      } catch (e) {
+        console.error("Socket send failed, falling back to HTTP", e);
+        // fallback to HTTP if emit fails
+        try {
+          const res = await fetch(`${API_URL}/messages`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              roomId: activeRoomId,
+              content,
+              sender: "Agent",
+            }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const msg = (await res.json()) as Message;
+          setMessages((prev) => [...prev, msg]);
+        } catch (err) {
+          console.error("Failed to send via HTTP", err);
+          setError("Failed to send message");
+        }
+      }
+      return;
+    }
+
+    // If no socket, keep previous HTTP behavior
     try {
       const res = await fetch(`${API_URL}/messages`, {
         method: "POST",
@@ -131,11 +246,6 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
     }
   };
 
-  const isDark =
-    typeof document !== "undefined"
-      ? document.documentElement.dataset.theme === "dark"
-      : true;
-
   return (
     <div
       style={{
@@ -145,14 +255,15 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
         height: "100%",
         minHeight: 0,
         fontSize: 13,
+        color: "var(--text-primary)",
       }}
     >
       {/* Conversations list */}
       <div
         style={{
           borderRadius: 16,
-          border: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
-          background: isDark ? "#020617" : "#ffffff",
+          border: "1px solid var(--border-color)",
+          background: "var(--bg-panel)",
           display: "flex",
           flexDirection: "column",
           minHeight: 0,
@@ -161,7 +272,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
         <div
           style={{
             padding: "10px 12px",
-            borderBottom: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--border-color)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -172,7 +283,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
           <span
             style={{
               fontSize: 11,
-              color: "#9ca3af",
+              color: "var(--text-secondary)",
             }}
           >
             {team?.name ?? "Workspace"}
@@ -181,7 +292,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
         <div
           style={{
             padding: 8,
-            borderBottom: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--border-color)",
           }}
         >
           <input
@@ -189,11 +300,11 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
             style={{
               width: "100%",
               borderRadius: 8,
-              border: isDark ? "1px solid #1f2937" : "1px solid #d1d5db",
+              border: "1px solid var(--border-color)",
               padding: "6px 8px",
               fontSize: 12,
-              background: isDark ? "#020617" : "#ffffff",
-              color: isDark ? "#e5e7eb" : "#111827",
+              background: "var(--bg-subpanel)",
+              color: "var(--text-primary)",
             }}
           />
         </div>
@@ -208,7 +319,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
               style={{
                 padding: 12,
                 fontSize: 12,
-                color: "#9ca3af",
+                color: "var(--text-secondary)",
               }}
             >
               Loading conversations…
@@ -219,7 +330,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
               style={{
                 padding: 12,
                 fontSize: 12,
-                color: "#9ca3af",
+                color: "var(--text-secondary)",
               }}
             >
               No conversations yet.
@@ -241,10 +352,10 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
                   background: active
                     ? "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(22,163,74,0.16))"
                     : "transparent",
-                  color: active ? "#e5e7eb" : "#d1d5db",
                   display: "flex",
                   flexDirection: "column",
                   gap: 2,
+                  color: "var(--text-primary)",
                 }}
               >
                 <div
@@ -259,7 +370,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
                   <span
                     style={{
                       fontSize: 11,
-                      color: "#9ca3af",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     {new Date(c.lastMessageAt).toLocaleTimeString()}
@@ -268,7 +379,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
                 <div
                   style={{
                     fontSize: 11,
-                    color: "#9ca3af",
+                    color: "var(--text-secondary)",
                   }}
                 >
                   {c.lastPreview || "No messages yet"}
@@ -283,8 +394,8 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
       <div
         style={{
           borderRadius: 16,
-          border: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
-          background: isDark ? "#020617" : "#ffffff",
+          border: "1px solid var(--border-color)",
+          background: "var(--bg-panel)",
           display: "flex",
           flexDirection: "column",
           minHeight: 0,
@@ -293,7 +404,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
         <div
           style={{
             padding: "10px 12px",
-            borderBottom: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--border-color)",
             fontSize: 12,
             display: "flex",
             justifyContent: "space-between",
@@ -302,7 +413,9 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
           <span>
             {activeRoomId ? `Room ${activeRoomId.slice(-8)}` : "No conversation"}
           </span>
-          <span style={{ fontSize: 11, color: "#9ca3af" }}>Live chat</span>
+          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+            Live chat
+          </span>
         </div>
         <div
           style={{
@@ -315,7 +428,7 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
           }}
         >
           {loadingMessages && (
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
               Loading messages…
             </div>
           )}
@@ -356,14 +469,14 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
             );
           })}
           {messages.length === 0 && !loadingMessages && (
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
               Select a conversation to start chatting.
             </div>
           )}
         </div>
         <div
           style={{
-            borderTop: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
+            borderTop: "1px solid var(--border-color)",
             padding: "8px 10px",
             display: "flex",
             gap: 8,
@@ -385,11 +498,11 @@ export default function AgentDashboard({ team }: AgentDashboardProps) {
             style={{
               flex: 1,
               borderRadius: 999,
-              border: isDark ? "1px solid #1f2937" : "1px solid #d1d5db",
+              border: "1px solid var(--border-color)",
               padding: "6px 10px",
               fontSize: 12,
-              background: isDark ? "#020617" : "#ffffff",
-              color: isDark ? "#e5e7eb" : "#111827",
+              background: "var(--bg-subpanel)",
+              color: "var(--text-primary)",
             }}
           />
           <button
