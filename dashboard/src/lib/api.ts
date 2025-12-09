@@ -147,3 +147,51 @@ export async function updateWidgetSettings(
   });
   return handle<WidgetSettings>(res);
 }
+
+export interface Inbox {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export async function fetchInboxes(token: string): Promise<Inbox[]> {
+  const res = await fetch(`${API_URL}/inboxes`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to load inboxes');
+  return res.json();
+}
+
+export async function createInbox(token: string, name: string): Promise<Inbox> {
+  const res = await fetch(`${API_URL}/inboxes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error('Failed to create inbox');
+  return res.json();
+}
+
+export async function moveConversationToInbox(
+  token: string,
+  conversationId: string,
+  inboxId: string | null,
+): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/conversations/${conversationId}/inbox`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ inboxId }),
+    },
+  );
+  if (!res.ok) throw new Error('Failed to move conversation');
+}

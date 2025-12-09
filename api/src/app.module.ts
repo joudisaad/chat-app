@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { PublicModule } from './public/public.module';
 import { WidgetSettingsModule } from './widget-settings/widget-settings.module';
 import { ConversationsModule } from './conversations/conversations.module';
+import { InboxesModule } from './inboxes/inboxes.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { ConversationsModule } from './conversations/conversations.module';
     UsersModule,
     PublicModule,
     WidgetSettingsModule,
-    ConversationsModule
+    ConversationsModule,
+    InboxesModule
   ],
 })
 export class AppModule {}

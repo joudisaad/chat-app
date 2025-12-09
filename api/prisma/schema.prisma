@@ -18,6 +18,12 @@ model Message {
   teamId String
 }
 
+enum ConversationStatus {
+  OPEN
+  PENDING
+  RESOLVED
+}
+
 model Conversation {
   id            String   @id @default(uuid())
   roomId        String   @unique
@@ -26,8 +32,28 @@ model Conversation {
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
 
-  team   Team   @relation(fields: [teamId], references: [id])
+  team    Team    @relation(fields: [teamId], references: [id])
+  teamId  String
+  inboxId String?
+  inbox   Inbox?  @relation(fields: [inboxId], references: [id])
+
+  status       ConversationStatus @default(OPEN)
+  assigneeId   String?
+  assignee     User? @relation("ConversationAssignee", fields: [assigneeId], references: [id])
+}
+
+model Inbox {
+  id     String @id @default(uuid())
+  name   String
   teamId String
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  isDefault Boolean @default(false)
+
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -39,6 +65,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   memberships TeamMembership[]
+  assignedConversations Conversation[] @relation("ConversationAssignee")
 }
 
 model Team {
@@ -49,10 +76,10 @@ model Team {
 
   publicKey String? @unique
 
-  memberships   TeamMembership[]
-  conversations Conversation[]
-  messages      Message[]
-
+  memberships    TeamMembership[]
+  conversations  Conversation[]
+  messages       Message[]
+  inboxes        Inbox[]
   widgetSettings WidgetSettings?
 }
 

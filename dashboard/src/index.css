@@ -248,3 +248,100 @@ html[data-theme="light"] .sidebar-item:hover {
 html[data-theme="light"] .sidebar-item--active {
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.25), 0 6px 18px rgba(15, 23, 42, 0.18);
 }
+.inbox-sidebar {
+  padding: 8px 10px;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.inbox-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.inbox-sidebar-add {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.inbox-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inbox-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.inbox-sidebar-item-active {
+  background: var(--surface-strong);
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+}
+
+.inbox-sidebar-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* Context menu */
+.conversation-context-menu {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+}
+
+.conversation-context-menu-inner {
+  position: absolute;
+  min-width: 160px;
+  border-radius: 8px;
+  background: var(--surface-popover);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  padding: 6px 0;
+}
+
+.conversation-context-menu-title {
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.conversation-context-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.conversation-context-menu-item:hover {
+  background: var(--surface-subtle);
+}
