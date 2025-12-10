@@ -37,9 +37,51 @@ model Conversation {
   inboxId String?
   inbox   Inbox?  @relation(fields: [inboxId], references: [id])
 
-  status       ConversationStatus @default(OPEN)
-  assigneeId   String?
-  assignee     User? @relation("ConversationAssignee", fields: [assigneeId], references: [id])
+  status     ConversationStatus @default(OPEN)
+  assigneeId String?
+  assignee   User?              @relation("ConversationAssignee", fields: [assigneeId], references: [id])
+
+  etiquettes ConversationEtiquette[]
+}
+
+model ConversationEtiquette {
+  conversationId String
+  etiquetteId    String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  etiquette    Etiquette    @relation(fields: [etiquetteId], references: [id])
+
+  @@id([conversationId, etiquetteId]) // composite PK = no duplicates
+}
+
+model Etiquette {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  color       String
+  description String?
+  teamId      String
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([teamId, slug])
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  publicKey String?  @unique
+
+  memberships    TeamMembership[]
+  conversations  Conversation[]
+  messages       Message[]
+  inboxes        Inbox[]
+  widgetSettings WidgetSettings?
+  etiquettes     Etiquette[]   // <-- add this
 }
 
 model Inbox {
@@ -64,25 +106,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships TeamMembership[]
-  assignedConversations Conversation[] @relation("ConversationAssignee")
+  memberships           TeamMembership[]
+  assignedConversations Conversation[]   @relation("ConversationAssignee")
 }
-
-model Team {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  publicKey String? @unique
-
-  memberships    TeamMembership[]
-  conversations  Conversation[]
-  messages       Message[]
-  inboxes        Inbox[]
-  widgetSettings WidgetSettings?
-}
-
 model TeamMembership {
   id        String   @id @default(uuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

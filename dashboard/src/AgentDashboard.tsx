@@ -8,8 +8,11 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { Team } from "./App";
-
-interface Conversation {
+import "./AgentDashboard.css";
+import { ConversationList } from "./features/inboxes/ConversationList";
+import { ChatPanel } from "./features/inboxes/ChatPanel";
+import { ConversationContextMenu } from "./features/inboxes/ConversationContextMenu";
+export interface Conversation {
   id: string;
   roomId: string;
   lastMessageAt: string;
@@ -19,9 +22,10 @@ interface Conversation {
   status?: "OPEN" | "PENDING" | "RESOLVED";
   assigneeId?: string | null;
   assigneeName?: string | null;
+  etiquette?: string | null;
 }
 
-interface Message {
+export interface Message {
   id: string;
   roomId: string;
   content: string;
@@ -29,10 +33,18 @@ interface Message {
   createdAt: string;
 }
 
-interface Inbox {
+export interface Inbox {
   id: string;
   name: string;
   isDefault?: boolean;
+}
+
+export interface Etiquette {
+  id: string;
+  name: string;
+  color: string;
+  slug?: string;
+  description?: string | null;
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
@@ -67,6 +79,8 @@ export default function AgentDashboard({
   const [error, setError] = useState<string | null>(null);
 
   const [inboxes, setInboxes] = useState<Inbox[]>([]);
+  const [etiquettes, setEtiquettes] = useState<Etiquette[]>([]);
+  const [selectedEtiquette, setSelectedEtiquette] = useState<string | null>(null);
 
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -143,10 +157,28 @@ export default function AgentDashboard({
     }
   }, [token]);
 
+  const loadEtiquettes = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/etiquettes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as Etiquette[];
+      setEtiquettes(data);
+    } catch (e) {
+      console.error("Failed to load etiquettes", e);
+    }
+  }, [token]);
+
   // Load inboxes once we have a token
   useEffect(() => {
     void loadInboxes();
   }, [loadInboxes]);
+
+  useEffect(() => {
+    void loadEtiquettes();
+  }, [loadEtiquettes]);
 
   // Refresh inboxes whenever the rest of the app signals an update
   useEffect(() => {
@@ -394,6 +426,60 @@ export default function AgentDashboard({
   };
 
 
+  const handleCreateEtiquette = async (data: { name: string; color: string }) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/etiquettes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: data.name,
+          color: data.color,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const created = (await res.json()) as Etiquette;
+      setEtiquettes((prev) => [...prev, created]);
+    } catch (e) {
+      console.error("Failed to create etiquette", e);
+    }
+  };
+
+  const handleDeleteEtiquette = async (id: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/etiquettes/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to delete etiquette", await res.text());
+        return;
+      }
+
+      // Remove from local state
+      setEtiquettes((prev) => prev.filter((tag) => tag.id !== id));
+
+      // If the deleted etiquette was currently selected, clear the filter
+      setSelectedEtiquette((current) => {
+        const deleted = etiquettes.find((t) => t.id === id);
+        if (deleted && deleted.slug && deleted.slug === current) {
+          return null;
+        }
+        return current;
+      });
+    } catch (e) {
+      console.error("Error deleting etiquette", e);
+    }
+  };
+
   const handleConversationContextMenu = (
     event: MouseEvent<HTMLButtonElement>,
     conversationId: string
@@ -503,9 +589,13 @@ export default function AgentDashboard({
     }
   };
 
-  const filteredConversations = activeInboxId
-    ? conversations.filter((c) => c.inboxId === activeInboxId)
-    : conversations;
+  const filteredConversations = conversations.filter((c) => {
+    const matchesInbox = activeInboxId ? c.inboxId === activeInboxId : true;
+    const matchesEtiquette = selectedEtiquette
+      ? c.etiquette === selectedEtiquette
+      : true;
+    return matchesInbox && matchesEtiquette;
+  });
 
   const currentInboxId =
     contextMenu &&
@@ -514,675 +604,51 @@ export default function AgentDashboard({
           .inboxId
       : null;
 
-  return (
-    <>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "280px minmax(0, 2fr)",
-          gap: 12,
-          height: "100%",
-          minHeight: 0,
-          fontSize: 13,
-          color: "var(--text-primary)",
-        }}
-      >
+return (
+  <>
+    <div className="agent-dashboard-grid">
+      <ConversationList
+        team={team}
+        conversations={conversations}
+        filteredConversations={filteredConversations}
+        loadingConvos={loadingConvos}
+        activeInboxId={activeInboxId}
+        activeRoomId={activeRoomId}
+        currentUserId={currentUserId}
+        etiquettes={etiquettes}
+        onCreateEtiquette={handleCreateEtiquette}
+        onDeleteEtiquette={handleDeleteEtiquette}
+        selectedEtiquette={selectedEtiquette}
+        setSelectedEtiquette={setSelectedEtiquette}
+        onSelectRoom={setActiveRoomId}
+        onContextMenu={handleConversationContextMenu}
+      />
 
-        {/* MIDDLE COLUMN: Conversations list */}
-        <div
-          style={{
-            borderRadius: 16,
-            border: "1px solid var(--border-color)",
-            background: "var(--bg-panel)",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
-          <div
-            style={{
-              padding: "10px 12px",
-              borderBottom: "1px solid var(--border-color)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: 12,
-            }}
-          >
-            <span>Live Inbox</span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-              }}
-            >
-              {team?.name ?? "Workspace"}
-            </span>
-          </div>
+      <ChatPanel
+        activeRoomId={activeRoomId}
+        messages={messages}
+        loadingMessages={loadingMessages}
+        input={input}
+        setInput={setInput}
+        onSend={handleSend}
+        insertAtCursor={insertAtCursor}
+        messagesContainerRef={messagesContainerRef}
+        messagesEndRef={messagesEndRef}
+        textareaRef={textareaRef}
+        error={error}
+      />
+    </div>
 
-          {/* Search bar */}
-          <div
-            style={{
-              padding: 8,
-              borderTop: "1px solid var(--border-color)",
-              borderBottom: "1px solid var(--border-color)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <input
-              placeholder="Search conversations…"
-              style={{
-                width: "100%",
-                borderRadius: 8,
-                border: "1px solid var(--border-color)",
-                padding: "6px 8px",
-                fontSize: 12,
-                background: "var(--bg-subpanel)",
-                color: "var(--text-primary)",
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-            }}
-          >
-            {loadingConvos && (
-              <div
-                style={{
-                  padding: 12,
-                  fontSize: 12,
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Loading conversations…
-              </div>
-            )}
-
-            {/* Global empty state when there are no conversations at all */}
-            {!loadingConvos && conversations.length === 0 && !activeInboxId && (
-              <div
-                style={{
-                  padding: 12,
-                  fontSize: 12,
-                  color: "var(--text-secondary)",
-                }}
-              >
-                No conversations yet. New visitors will appear here.
-              </div>
-            )}
-
-            {/* Empty state for a sub-inbox with no conversations */}
-            {!loadingConvos &&
-              conversations.length > 0 &&
-              activeInboxId &&
-              filteredConversations.length === 0 && (
-                <div
-                  style={{
-                    padding: 12,
-                    fontSize: 12,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  No conversations in this inbox yet.
-                  <br />
-                  Move a conversation here using the right-click menu.
-                </div>
-              )}
-
-            {filteredConversations.map((c) => {
-              const active = c.roomId === activeRoomId;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveRoomId(c.roomId)}
-                  onContextMenu={(e) =>
-                    handleConversationContextMenu(e, c.id)
-                  }
-                  style={{
-                    width: "100%",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "8px 10px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    background: active
-                      ? "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(22,163,74,0.16))"
-                      : "transparent",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      fontSize: 12,
-                    }}
-                  >
-                    <span>Visitor {c.roomId.slice(-5)}</span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {new Date(c.lastMessageAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {c.lastPreview || "No messages yet"}
-                  </div>
-                                    <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: 2,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {c.assigneeId
-                        ? c.assigneeId === currentUserId
-                          ? "Assigned to you"
-                          : c.assigneeName
-                          ? `Assigned to ${c.assigneeName}`
-                          : "Assigned"
-                        : "Unassigned"}
-                    </span>
-                    {c.status && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          padding: "2px 6px",
-                          borderRadius: 999,
-                          border: "1px solid var(--border-color)",
-                          textTransform: "uppercase",
-                          letterSpacing: 0.06,
-                          color:
-                            c.status === "RESOLVED"
-                              ? "#16a34a"
-                              : c.status === "PENDING"
-                              ? "#fbbf24"
-                              : "#22c55e",
-                        }}
-                      >
-                        {c.status.toLowerCase()}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Chat panel */}
-        <div
-          style={{
-            borderRadius: 16,
-            border: "1px solid var(--border-color)",
-            background: "var(--bg-panel)",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
-          <div
-            style={{
-              padding: "10px 12px",
-              borderBottom: "1px solid var(--border-color)",
-              fontSize: 12,
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              {activeRoomId ? `Room ${activeRoomId.slice(-8)}` : "No conversation"}
-            </span>
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-              Live chat
-            </span>
-          </div>
-          <div
-            ref={messagesContainerRef}
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "10px 12px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            {loadingMessages && (
-              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                Loading messages…
-              </div>
-            )}
-            {messages.map((m) => {
-              const mine = m.sender === "Agent";
-              return (
-                <div
-                  key={m.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: mine ? "flex-end" : "flex-start",
-                  }}
-                >
-                  <div
-                    style={{
-                      maxWidth: "62%",
-                      padding: "8px 12px",
-                      borderRadius: 18,
-                      borderBottomLeftRadius: mine ? 18 : 6,
-                      borderBottomRightRadius: mine ? 6 : 18,
-                      fontSize: 13,
-                      lineHeight: 1.4,
-                      background: mine
-                        ? "linear-gradient(135deg, #22c55e, #16a34a)"
-                        : "#020617",
-                      color: mine ? "#022c22" : "#e5e7eb",
-                      boxShadow: "0 10px 30px rgba(15,23,42,0.35)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        opacity: 0.7,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {mine ? "Agent" : m.sender || "Visitor"}
-                    </div>
-                    <div>{m.content}</div>
-                  </div>
-                </div>
-              );
-            })}
-            {messages.length === 0 && !loadingMessages && (
-              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                Select a conversation to start chatting.
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          <div
-            style={{
-              borderTop: "1px solid var(--border-color)",
-              padding: "8px 10px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button
-                type="button"
-                onClick={() => insertAtCursor("😊")}
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 999,
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-subpanel)",
-                  fontSize: 14,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                }}
-                tabIndex={-1}
-              >
-                😊
-              </button>
-              <button
-                type="button"
-                onClick={() => insertAtCursor("**", true)}
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 999,
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-subpanel)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                }}
-                tabIndex={-1}
-              >
-                B
-              </button>
-              <button
-                type="button"
-                onClick={() => insertAtCursor("_", true)}
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 999,
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-subpanel)",
-                  fontSize: 14,
-                  fontStyle: "italic",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                }}
-                tabIndex={-1}
-              >
-                i
-              </button>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleSend();
-              }}
-              style={{ display: "flex", alignItems: "flex-end", gap: 8 }}
-            >
-              <textarea
-                ref={textareaRef}
-                placeholder={
-                  activeRoomId ? "Reply to visitor…" : "Select a conversation…"
-                }
-                disabled={!activeRoomId}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSend();
-                  }
-                }}
-                rows={2}
-                style={{
-                  flex: 1,
-                  borderRadius: 12,
-                  border: "1px solid var(--border-color)",
-                  padding: "8px 10px",
-                  fontSize: 12,
-                  resize: "none",
-                  background: "var(--bg-subpanel)",
-                  color: "var(--text-primary)",
-                  outline: "none",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={!activeRoomId || !input.trim()}
-                style={{
-                  borderRadius: 999,
-                  border: "none",
-                  padding: "8px 14px",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor:
-                    !activeRoomId || !input.trim() ? "not-allowed" : "pointer",
-                  background:
-                    !activeRoomId || !input.trim() ? "#4b5563" : "#22c55e",
-                  color: "#022c22",
-                  transition:
-                    "background 120ms ease-out, transform 80ms ease-out",
-                }}
-              >
-                Send
-              </button>
-            </form>
-          </div>
-          {error && (
-            <div
-              style={{
-                padding: "4px 10px 8px",
-                fontSize: 11,
-                color: "#f97373",
-              }}
-            >
-              {error}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {contextMenu && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-          }}
-          onClick={() => setContextMenu(null)}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: contextMenu.y,
-              left: contextMenu.x,
-              minWidth: 180,
-              borderRadius: 8,
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-              padding: "6px 0",
-              fontSize: 12,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                padding: "4px 10px 6px",
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: 0.04,
-                color: "var(--text-secondary)",
-              }}
-            >
-              Move conversation to inbox
-            </div>
-            {inboxes.map((inbox) => {
-              const isCurrent = inbox.id === currentInboxId;
-              return (
-                <button
-                  key={inbox.id}
-                  onClick={() => handleMoveToInbox(inbox.id)}
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    textAlign: "left",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--text-primary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    fontSize: 12,
-                  }}
-                >
-                  <span>{inbox.name}</span>
-                  {isCurrent && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "var(--accent-color, #22c55e)",
-                      }}
-                    >
-                      ✓
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => handleMoveToInbox(null)}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-secondary)",
-                fontSize: 11,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span>All conversations (no sub-inbox)</span>
-              {!currentInboxId && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "var(--accent-color, #22c55e)",
-                  }}
-                >
-                  ✓
-                </span>
-              )}
-            </button>
-                        <div
-              style={{
-                margin: "6px 0",
-                borderTop: "1px solid var(--border-color)",
-              }}
-            />
-
-            <div
-              style={{
-                padding: "4px 10px 6px",
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: 0.04,
-                color: "var(--text-secondary)",
-              }}
-            >
-              Assignment
-            </div>
-            <button
-              onClick={() => {
-                if (!currentUserId) return;
-                void handleAssignConversation(currentUserId);
-                setContextMenu(null);
-              }}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: currentUserId ? "pointer" : "not-allowed",
-                color: "var(--text-primary)",
-                opacity: currentUserId ? 1 : 0.6,
-              }}
-            >
-              Assign to me
-            </button>
-            <button
-              onClick={() => {
-                void handleAssignConversation(null);
-                setContextMenu(null);
-              }}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-secondary)",
-                fontSize: 11,
-              }}
-            >
-              Unassign
-            </button>
-
-            <div
-              style={{
-                margin: "6px 0",
-                borderTop: "1px solid var(--border-color)",
-              }}
-            />
-
-            <div
-              style={{
-                padding: "4px 10px 6px",
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: 0.04,
-                color: "var(--text-secondary)",
-              }}
-            >
-              Status
-            </div>
-            <button
-              onClick={() => handleUpdateStatus("OPEN")}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-primary)",
-              }}
-            >
-              Mark as open
-            </button>
-            <button
-              onClick={() => handleUpdateStatus("PENDING")}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-primary)",
-              }}
-            >
-              Mark as pending
-            </button>
-            <button
-              onClick={() => handleUpdateStatus("RESOLVED")}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-primary)",
-              }}
-            >
-              Mark as resolved
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
+    <ConversationContextMenu
+      contextMenu={contextMenu}
+      inboxes={inboxes}
+      currentInboxId={currentInboxId}
+      currentUserId={currentUserId}
+      onClose={() => setContextMenu(null)}
+      onMoveToInbox={handleMoveToInbox}
+      onAssign={handleAssignConversation}
+      onUpdateStatus={handleUpdateStatus}
+    />
+  </>
+);
 }

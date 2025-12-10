@@ -18,6 +18,8 @@ export function InboxPage(props: RouteComponentProps) {
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Inbox | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newInboxName, setNewInboxName] = useState("");
 
   const token =
     typeof window !== "undefined"
@@ -51,18 +53,19 @@ export function InboxPage(props: RouteComponentProps) {
     };
   }, [token]);
 
-  const handleAddInbox = async () => {
+  const createInbox = async (name: string) => {
     if (!token) return;
-    const name = window.prompt("Sub-inbox name?");
-    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     try {
+      setIsSaving(true);
       const res = await fetch(`${API_URL}/inboxes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const inbox = (await res.json()) as Inbox;
@@ -70,6 +73,8 @@ export function InboxPage(props: RouteComponentProps) {
       setActiveInboxId(inbox.id);
     } catch (e) {
       console.error("Failed to create inbox from InboxPage", e);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -308,7 +313,10 @@ export function InboxPage(props: RouteComponentProps) {
 
           <button
             type="button"
-            onClick={handleAddInbox}
+            onClick={() => {
+              setNewInboxName("");
+              setIsCreateModalOpen(true);
+            }}
             title="Add sub-inbox"
             style={{
               marginTop: 8,
@@ -355,19 +363,7 @@ export function InboxPage(props: RouteComponentProps) {
         }}
       >
         {/* TOP HEADER */}
-        <div
-          style={{
-            height: 60,
-            borderBottom: "1px solid var(--border-color)",
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            color: "var(--text-primary)",
-            fontSize: 14,
-          }}
-        >
-          Live Inbox
-        </div>
+
 
         {/* DASHBOARD */}
         <div
@@ -380,6 +376,124 @@ export function InboxPage(props: RouteComponentProps) {
           <AgentDashboard team={props.team} activeInboxId={activeInboxId} />
         </div>
       </div>
+      {/* Create Inbox Modal */}
+      {isCreateModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--bg-panel)",
+              borderRadius: 12,
+              border: "1px solid var(--border-color)",
+              boxShadow: "0 18px 45px rgba(0,0,0,0.35)",
+              width: 380,
+              maxWidth: "90vw",
+              padding: "18px 20px 16px",
+              color: "var(--text-primary)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                marginBottom: 6,
+              }}
+            >
+              Create sub-inbox
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                marginBottom: 12,
+              }}
+            >
+              Organize your conversations into folders like “VIP clients”, “Bugs”, or “Billing”.
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await createInbox(newInboxName);
+                setIsCreateModalOpen(false);
+                setNewInboxName("");
+              }}
+            >
+              <input
+                autoFocus
+                value={newInboxName}
+                onChange={(e) => setNewInboxName(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-subpanel)",
+                  color: "var(--text-primary)",
+                  fontSize: 13,
+                  outline: "none",
+                  marginBottom: 14,
+                }}
+                placeholder="Sub-inbox name"
+              />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  marginTop: 4,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setNewInboxName("");
+                  }}
+                  disabled={isSaving}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    border: "1px solid var(--border-color)",
+                    background: "transparent",
+                    color: "var(--text-secondary)",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving || !newInboxName.trim()}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    border: "none",
+                    background:
+                      "var(--accent-color, linear-gradient(135deg,#22c55e,#16a34a))",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    opacity: isSaving || !newInboxName.trim() ? 0.7 : 1,
+                  }}
+                >
+                  {isSaving ? "Creating..." : "Create sub-inbox"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Rename Inbox Modal */}
       {renameTarget && (
