@@ -35,6 +35,17 @@ export function ConversationContextMenu({
 }: ConversationContextMenuProps) {
   if (!contextMenu) return null;
 
+  const handleRootClick: React.MouseEventHandler<HTMLDivElement> = () => {
+    onClose();
+  };
+
+  const handleMenuClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    e.stopPropagation();
+  };
+
+  const isEtiquetteChecked = (tagId: string) =>
+    (conversationEtiquettes || []).some((e) => e.id === tagId);
+
   return (
     <div
       style={{
@@ -42,262 +53,154 @@ export function ConversationContextMenu({
         inset: 0,
         zIndex: 50,
       }}
-      onClick={onClose}
+      onClick={handleRootClick}
     >
       <div
         style={{
           position: "absolute",
           top: contextMenu.y,
           left: contextMenu.x,
-          minWidth: 180,
-          borderRadius: 8,
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-color)",
-          boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-          padding: "6px 0",
-          fontSize: 12,
+          minWidth: 220,
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleMenuClick}
+        className="rounded-xl border border-slate-200 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-100"
       >
-        <div
-          style={{
-            padding: "4px 10px 6px",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: 0.04,
-            color: "var(--text-secondary)",
-          }}
-        >
+        {/* --- Move to inbox section --- */}
+        <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-800 dark:text-slate-400">
           Move conversation to inbox
         </div>
-        {inboxes.map((inbox) => {
-          const isCurrent = inbox.id === currentInboxId;
-          return (
-            <button
-              key={inbox.id}
-              onClick={() => onMoveToInbox(inbox.id)}
-              style={{
-                width: "100%",
-                padding: "6px 10px",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                fontSize: 12,
-              }}
-            >
-              <span>{inbox.name}</span>
-              {isCurrent && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "var(--accent-color, #22c55e)",
-                  }}
-                >
-                  ✓
-                </span>
-              )}
-            </button>
-          );
-        })}
-        <button
-          onClick={() => onMoveToInbox(null)}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--text-secondary)",
-            fontSize: 11,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <span>All conversations (no sub-inbox)</span>
-          {!currentInboxId && (
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--accent-color, #22c55e)",
-              }}
-            >
-              ✓
-            </span>
-          )}
-        </button>
 
-        <div
-          style={{
-            margin: "6px 0",
-            borderTop: "1px solid var(--border-color)",
-          }}
-        />
+        <div className="py-1">
+          {inboxes.map((inbox) => {
+            const isCurrent = inbox.id === currentInboxId;
+            return (
+              <button
+                key={inbox.id}
+                type="button"
+                onClick={() => onMoveToInbox(inbox.id)}
+                className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+              >
+                <span>{inbox.name}</span>
+                {isCurrent && (
+                  <span className="text-[11px] text-emerald-500">✓</span>
+                )}
+              </button>
+            );
+          })}
 
-        <div
-          style={{
-            padding: "4px 10px 6px",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: 0.04,
-            color: "var(--text-secondary)",
-          }}
-        >
+          <button
+            type="button"
+            onClick={() => onMoveToInbox(null)}
+            className="flex w-full items-center justify-between px-3 py-1.5 text-left text-[11px] text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            <span>All conversations (no sub-inbox)</span>
+            {!currentInboxId && (
+              <span className="text-[11px] text-emerald-500">✓</span>
+            )}
+          </button>
+        </div>
+
+        {/* --- Divider --- */}
+        <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+        {/* --- Assignment section --- */}
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
           Assignment
         </div>
-        <button
-          onClick={() => {
-            if (!currentUserId) return;
-            onAssign(currentUserId);
-            onClose();
-          }}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: currentUserId ? "pointer" : "not-allowed",
-            color: "var(--text-primary)",
-            opacity: currentUserId ? 1 : 0.6,
-          }}
-        >
-          Assign to me
-        </button>
-        <button
-          onClick={() => {
-            onAssign(null);
-            onClose();
-          }}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--text-secondary)",
-            fontSize: 11,
-          }}
-        >
-          Unassign
-        </button>
+        <div className="pb-1">
+          <button
+            type="button"
+            onClick={() => {
+              if (!currentUserId) return;
+              onAssign(currentUserId);
+              onClose();
+            }}
+            className={`flex w-full items-center px-3 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800 ${
+              currentUserId
+                ? "cursor-pointer text-slate-800 dark:text-slate-100"
+                : "cursor-not-allowed text-slate-400 dark:text-slate-500"
+            }`}
+          >
+            Assign to me
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onAssign(null);
+              onClose();
+            }}
+            className="flex w-full items-center px-3 py-1.5 text-left text-[11px] text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            Unassign
+          </button>
+        </div>
 
-        <div
-          style={{
-            margin: "6px 0",
-            borderTop: "1px solid var(--border-color)",
-          }}
-        />
+        {/* --- Divider --- */}
+        <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
-        <div
-          style={{
-            padding: "4px 10px 6px",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: 0.04,
-            color: "var(--text-secondary)",
-          }}
-        >
+        {/* --- Status section --- */}
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
           Status
         </div>
-        <button
-          onClick={() => onUpdateStatus("OPEN")}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--text-primary)",
-          }}
-        >
-          Mark as open
-        </button>
-        <button
-          onClick={() => onUpdateStatus("PENDING")}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--text-primary)",
-          }}
-        >
-          Mark as pending
-        </button>
-        <button
-          onClick={() => onUpdateStatus("RESOLVED")}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--text-primary)",
-          }}
-        >
-          Mark as resolved
-        </button>
+        <div className="pb-1">
+          <button
+            type="button"
+            onClick={() => onUpdateStatus("OPEN")}
+            className="flex w-full items-center px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Mark as open
+          </button>
+          <button
+            type="button"
+            onClick={() => onUpdateStatus("PENDING")}
+            className="flex w-full items-center px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Mark as pending
+          </button>
+          <button
+            type="button"
+            onClick={() => onUpdateStatus("RESOLVED")}
+            className="flex w-full items-center px-3 py-1.5 text-left text-xs text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Mark as resolved
+          </button>
+        </div>
+
+        {/* --- Labels section --- */}
         {etiquettes && etiquettes.length > 0 && onApplyEtiquette && (
           <>
-            <div
-              style={{
-                margin: "6px 0",
-                borderTop: "1px solid var(--border-color)",
-              }}
-            />
-
-            <div
-              style={{
-                padding: "4px 10px 6px",
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: 0.04,
-                color: "var(--text-secondary)",
-              }}
-            >
+            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+            <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
               Labels
             </div>
-
-    {etiquettes.map((tag) => {
-      const isChecked = (conversationEtiquettes || []).some(
-        (e) => e.id === tag.id
-      );
-
-      return (
-        <button
-          key={tag.id}
-          type="button"
-          onClick={() =>
-            onApplyEtiquette(contextMenu.conversationId, tag.id)
-          }
-          className={
-            "context-menu-item" +
-            (isChecked ? " context-menu-item-checked" : "")
-          }
-        >
-          <span className="context-menu-check">
-            {isChecked ? "✓" : ""}
-          </span>
-          <span
-            className="context-menu-color-dot"
-            style={{ backgroundColor: tag.color }}
-          />
-          <span className="context-menu-item-label">{tag.name}</span>
-        </button>
-      );
-    })}
+            <div className="pb-1">
+              {etiquettes.map((tag) => {
+                const checked = isEtiquetteChecked(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() =>
+                      onApplyEtiquette(contextMenu.conversationId, tag.id)
+                    }
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-slate-300 text-[10px] text-emerald-500 dark:border-slate-600">
+                        {checked ? "✓" : ""}
+                      </span>
+                      <span
+                        className="h-3 w-3 rounded-full border border-slate-200 dark:border-slate-600"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      <span className="truncate max-w-[120px] text-slate-800 dark:text-slate-100">
+                        {tag.name}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </>
         )}
       </div>

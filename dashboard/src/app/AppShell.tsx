@@ -25,15 +25,9 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
 
   return (
     <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        width: "100%",
-        background: isDark ? "#020617" : "#f3f4f6",
-        color: isDark ? "#e5e7eb" : "#111827",
-        fontFamily:
-          "-apple-system, BlinkMacSystemFont, system-ui, -system-ui, 'SF Pro Text', sans-serif",
-      }}
+      className={`min-h-screen w-full flex transition-colors duration-200 ${
+        isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"
+      }`}
     >
       <PrimaryNav
         theme={theme}
@@ -44,39 +38,15 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
       />
 
       {/* MAIN */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-        }}
-      >
+      <div className="flex flex-1 flex-col min-w-0">
         {/* TOP BAR */}
         <header
-          style={{
-            height: 52,
-            borderBottom: isDark ? "1px solid #111827" : "1px solid #e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 16px",
-            background: isDark ? "#020617" : "#ffffff",
-          }}
+          className={`h-13 flex items-center justify-between px-4 border-b transition-colors duration-200 ${
+            isDark ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"
+          }`}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-              }}
-            >
+          <div className="flex items-center gap-2">
+            <div className="text-[15px] font-semibold">
               {section === "inbox"
                 ? "Inbox"
                 : section === "settings"
@@ -84,11 +54,9 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
                 : "ChatApp"}
             </div>
             <span
+              className="inline-flex items-center rounded-full border px-2.5 py-[2px] text-[11px]"
               style={{
-                fontSize: 11,
-                padding: "2px 8px",
-                borderRadius: 999,
-                border: "1px solid rgba(34,197,94,0.4)",
+                borderColor: "rgba(34,197,94,0.4)",
                 color: "#4ade80",
               }}
             >
@@ -96,33 +64,19 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
             </span>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 12,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: "#9ca3af",
-              }}
-            >
+          <div className="flex items-center gap-2 text-[12px]">
+            <span className="hidden sm:inline text-[11px] text-slate-400">
               Live conversations powered by your own API
             </span>
             <button
+              type="button"
               onClick={() => onThemeChange(isDark ? "light" : "dark")}
-              style={{
-                borderRadius: 999,
-                border: isDark ? "1px solid #374151" : "1px solid #d1d5db",
-                background: isDark ? "#020617" : "#ffffff",
-                color: "#9ca3af",
-                padding: "4px 10px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium transition-colors duration-150
+                ${
+                  isDark
+                    ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-slate-100"
+                    : "border-slate-300 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700"
+                }`}
             >
               {isDark ? "Light mode" : "Dark mode"}
             </button>
@@ -130,15 +84,7 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
         </header>
 
         {/* PAGE CONTENT */}
-        <main
-          style={{
-            flex: 1,
-            minHeight: 0,
-            padding: 0,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+        <main className="flex flex-1 min-h-0 flex-col">
           <CurrentPage theme={theme} onThemeChange={onThemeChange} team={team} />
         </main>
       </div>

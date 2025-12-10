@@ -53,6 +53,28 @@ export function InboxPage(props: RouteComponentProps) {
     };
   }, [token]);
 
+  // Escape key closes any open modal
+  useEffect(() => {
+    if (!isCreateModalOpen && !renameTarget && !deleteTarget) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCreateModalOpen(false);
+        setRenameTarget(null);
+        setDeleteTarget(null);
+        setNewInboxName("");
+        setRenameValue("");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isCreateModalOpen, renameTarget, deleteTarget]);
+
   const createInbox = async (name: string) => {
     if (!token) return;
     const trimmed = name.trim();
@@ -151,80 +173,31 @@ export function InboxPage(props: RouteComponentProps) {
   };
 
   return (
-    <div
-      style={{
-        width: "100%",           // ✅ FULL WIDTH
-        height: "100%",          // ✅ FULL HEIGHT
-        display: "flex",
-        flexDirection: "row",    // Sidebar + main area
-        overflow: "hidden",
-      }}
-    >
+    <div className="flex h-full w-full overflow-hidden">
       {/* SIDEBAR: Inbox list (ALL + sub-inboxes) */}
-      <div
-        style={{
-          width: 240,            // Crisp-style sidebar width
-          background: "var(--bg-panel)",
-          borderRight: "1px solid var(--border-color)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 16px 8px",
-            color: "var(--text-primary)",
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Inbox</div>
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 0.06,
-              color: "var(--text-secondary)",
-            }}
-          >
+      <div className="flex h-full w-60 flex-col border-r border-slate-200 bg-slate-50/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="px-4 pb-2 pt-4 text-slate-900 dark:text-slate-100">
+          <div className="text-sm font-semibold">Inbox</div>
+          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             Default inboxes
           </div>
         </div>
 
-        <div
-          style={{
-            padding: "4px 8px 8px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            overflowY: "auto",
-          }}
-        >
-          {/* ALL = main inbox (no filter yet at page level) */}
+        <div className="mt-1 flex-1 overflow-y-auto px-2 pb-3">
+          {/* ALL = main inbox */}
           <button
             type="button"
             onClick={() => setActiveInboxId(null)}
-            style={{
-              borderRadius: 999,
-              border:
-                activeInboxId === null
-                  ? "1px solid var(--accent-color, #22c55e)"
-                  : "1px solid var(--border-color)",
-              padding: "6px 10px",
-              fontSize: 12,
-              background:
-                activeInboxId === null
-                  ? "rgba(34,197,94,0.12)"
-                  : "var(--bg-subpanel)",
-              color:
-                activeInboxId === null
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
-              textAlign: "left",
-              cursor: "pointer",
-            }}
+            className={`mb-1 flex w-full items-center justify-between rounded-full px-3 py-1.5 text-xs transition ${
+              activeInboxId === null
+                ? "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-300"
+                : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            }`}
           >
-            ALL
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="truncate font-medium">All conversations</span>
+            </div>
           </button>
 
           {inboxes.map((inbox) => {
@@ -233,78 +206,61 @@ export function InboxPage(props: RouteComponentProps) {
               <div
                 key={inbox.id}
                 onClick={() => setActiveInboxId(inbox.id)}
-                style={{
-                  borderRadius: 999,
-                  border: active
-                    ? "1px solid var(--accent-color, #22c55e)"
-                    : "1px solid var(--border-color)",
-                  padding: "4px 8px",
-                  fontSize: 12,
-                  background: active
-                    ? "rgba(34,197,94,0.12)"
-                    : "var(--bg-subpanel)",
-                  color: active
-                    ? "var(--text-primary)"
-                    : "var(--text-secondary)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 6,
-                }}
+                className={`mb-1 flex w-full cursor-pointer items-center justify-between rounded-full px-3 py-1.5 text-xs transition ${
+                  active
+                    ? "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-300"
+                    : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
               >
-                <span
-                  style={{
-                    flex: 1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {inbox.name}
-                </span>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
+                <span className="flex-1 truncate">{inbox.name}</span>
+                <div className="ml-2 flex items-center gap-1.5">
+                  {/* Edit (rename) icon */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      void handleRenameInbox(inbox);
+                      handleRenameInbox(inbox);
                     }}
                     title="Rename sub-inbox"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--text-secondary)",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      padding: 2,
-                    }}
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
                   >
-                    ✏️
+                    <svg
+                      viewBox="0 0 20 20"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M4 13.5V16h2.5L15 7.5 12.5 5 4 13.5z" />
+                      <path d="M11.5 4L13 2.5a1.5 1.5 0 1 1 2.12 2.12L13.62 6.12" />
+                    </svg>
                   </button>
+
+                  {/* Delete icon */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      void handleDeleteInbox(inbox);
+                      handleDeleteInbox(inbox);
                     }}
                     title="Delete sub-inbox"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--text-secondary)",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      padding: 2,
-                    }}
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 hover:bg-red-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-300"
                   >
-                    🗑
+                    <svg
+                      viewBox="0 0 20 20"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 6.5h10" />
+                      <path d="M8 6.5V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" />
+                      <path d="M7.5 6.5 8 15a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1l.5-8.5" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -318,107 +274,44 @@ export function InboxPage(props: RouteComponentProps) {
               setIsCreateModalOpen(true);
             }}
             title="Add sub-inbox"
-            style={{
-              marginTop: 8,
-              borderRadius: 999,
-              border: "1px dashed var(--border-color)",
-              background: "transparent",
-              color: "var(--text-secondary)",
-              fontSize: 12,
-              padding: "6px 10px",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              cursor: "pointer",
-            }}
+            className="mt-2 inline-flex w-full items-center gap-2 rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-emerald-500 dark:hover:text-emerald-300"
           >
-            <span
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "999px",
-                border: "1px solid var(--border-color)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-                lineHeight: 1,
-              }}
-            >
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-base leading-none dark:border-slate-600">
               +
             </span>
-            <span>Add sub-inbox</span>
+            <span className="truncate">Add sub-inbox</span>
           </button>
         </div>
       </div>
 
       {/* MAIN PANEL */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          background: "var(--bg-main)",
-        }}
-      >
-        {/* TOP HEADER */}
-
-
-        {/* DASHBOARD */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            padding: 0, // full-width workspace, no inner padding
-          }}
-        >
+      <div className="flex flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-1 overflow-hidden">
           <AgentDashboard team={props.team} activeInboxId={activeInboxId} />
         </div>
       </div>
+
       {/* Create Inbox Modal */}
       {isCreateModalOpen && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+          onClick={() => {
+            if (isSaving) return;
+            setIsCreateModalOpen(false);
+            setNewInboxName("");
           }}
         >
           <div
-            style={{
-              background: "var(--bg-panel)",
-              borderRadius: 12,
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 18px 45px rgba(0,0,0,0.35)",
-              width: 380,
-              maxWidth: "90vw",
-              padding: "18px 20px 16px",
-              color: "var(--text-primary)",
-            }}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
+            <h3 className="mb-1 text-[15px] font-semibold text-slate-900 dark:text-slate-100">
               Create sub-inbox
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                marginBottom: 12,
-              }}
-            >
-              Organize your conversations into folders like “VIP clients”, “Bugs”, or “Billing”.
-            </div>
+            </h3>
+            <p className="mb-3 text-[12px] text-slate-500 dark:text-slate-400">
+              Organize your conversations into folders like “VIP clients”,
+              “Bugs”, or “Billing”.
+            </p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -431,27 +324,10 @@ export function InboxPage(props: RouteComponentProps) {
                 autoFocus
                 value={newInboxName}
                 onChange={(e) => setNewInboxName(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-subpanel)",
-                  color: "var(--text-primary)",
-                  fontSize: 13,
-                  outline: "none",
-                  marginBottom: 14,
-                }}
+                className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Sub-inbox name"
               />
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 8,
-                  marginTop: 4,
-                }}
-              >
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -459,33 +335,14 @@ export function InboxPage(props: RouteComponentProps) {
                     setNewInboxName("");
                   }}
                   disabled={isSaving}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 999,
-                    border: "1px solid var(--border-color)",
-                    background: "transparent",
-                    color: "var(--text-secondary)",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
+                  className="inline-flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving || !newInboxName.trim()}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                    border: "none",
-                    background:
-                      "var(--accent-color, linear-gradient(135deg,#22c55e,#16a34a))",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    opacity: isSaving || !newInboxName.trim() ? 0.7 : 1,
-                  }}
+                  className="inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-500/60"
                 >
                   {isSaving ? "Creating..." : "Create sub-inbox"}
                 </button>
@@ -498,85 +355,36 @@ export function InboxPage(props: RouteComponentProps) {
       {/* Rename Inbox Modal */}
       {renameTarget && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+          onClick={() => {
+            if (isSaving) return;
+            setRenameTarget(null);
           }}
         >
           <div
-            style={{
-              background: "var(--bg-panel)",
-              borderRadius: 12,
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 18px 45px rgba(0,0,0,0.35)",
-              width: 380,
-              maxWidth: "90vw",
-              padding: "18px 20px 16px",
-              color: "var(--text-primary)",
-            }}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
+            <h3 className="mb-1 text-[15px] font-semibold text-slate-900 dark:text-slate-100">
               Rename sub-inbox
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                marginBottom: 12,
-              }}
-            >
-              Update the name for this sub-inbox. Conversations will stay inside,
+            </h3>
+            <p className="mb-3 text-[12px] text-slate-500 dark:text-slate-400">
+              Update the name for this sub-inbox. Conversations stay inside,
               only the label changes.
-            </div>
+            </p>
             <input
               autoFocus
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid var(--border-color)",
-                background: "var(--bg-subpanel)",
-                color: "var(--text-primary)",
-                fontSize: 13,
-                outline: "none",
-                marginBottom: 14,
-              }}
+              className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
               placeholder="Sub-inbox name"
             />
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-                marginTop: 4,
-              }}
-            >
+            <div className="flex justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setRenameTarget(null)}
                 disabled={isSaving}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 999,
-                  border: "1px solid var(--border-color)",
-                  background: "transparent",
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
+                className="inline-flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -584,18 +392,7 @@ export function InboxPage(props: RouteComponentProps) {
                 type="button"
                 onClick={() => void handleConfirmRename()}
                 disabled={isSaving}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  border: "none",
-                  background:
-                    "var(--accent-color, linear-gradient(135deg,#22c55e,#16a34a))",
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  opacity: isSaving ? 0.7 : 1,
-                }}
+                className="inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-500/60"
               >
                 {isSaving ? "Saving..." : "Save"}
               </button>
@@ -607,70 +404,31 @@ export function InboxPage(props: RouteComponentProps) {
       {/* Delete Inbox Modal */}
       {deleteTarget && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+          onClick={() => {
+            if (isSaving) return;
+            setDeleteTarget(null);
           }}
         >
           <div
-            style={{
-              background: "var(--bg-panel)",
-              borderRadius: 12,
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 18px 45px rgba(0,0,0,0.35)",
-              width: 380,
-              maxWidth: "90vw",
-              padding: "18px 20px 16px",
-              color: "var(--text-primary)",
-            }}
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
+            <h3 className="mb-1 text-[15px] font-semibold text-slate-900 dark:text-slate-100">
               Delete sub-inbox
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                marginBottom: 12,
-              }}
-            >
+            </h3>
+            <p className="mb-3 text-[12px] text-slate-500 dark:text-slate-400">
               Are you sure you want to delete{" "}
-              <span style={{ fontWeight: 600 }}>{deleteTarget.name}</span>?{" "}
+              <span className="font-semibold">{deleteTarget.name}</span>?<br />
               Conversations will not be deleted, they will just appear in{" "}
-              <span style={{ fontWeight: 500 }}>All conversations</span>.
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-                marginTop: 4,
-              }}
-            >
+              <span className="font-medium">All conversations</span>.
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isSaving}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 999,
-                  border: "1px solid var(--border-color)",
-                  background: "transparent",
-                  color: "var(--text-secondary)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
+                className="inline-flex items-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -678,18 +436,7 @@ export function InboxPage(props: RouteComponentProps) {
                 type="button"
                 onClick={() => void handleConfirmDelete()}
                 disabled={isSaving}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  border: "none",
-                  background:
-                    "linear-gradient(135deg, #ef4444, #b91c1c)", // red gradient
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  opacity: isSaving ? 0.7 : 1,
-                }}
+                className="inline-flex items-center rounded-lg bg-red-500 px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-500/60"
               >
                 {isSaving ? "Deleting..." : "Delete"}
               </button>

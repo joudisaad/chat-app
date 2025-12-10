@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { MouseEvent } from "react";
 import type { Team } from "../../App";
 import type { Conversation } from "../../AgentDashboard";
@@ -48,6 +48,27 @@ export function ConversationList({
     name: string;
   } | null>(null);
 
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isEtiquetteMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsEtiquetteMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isEtiquetteMenuOpen]);
+
   const truncateEtiquetteName = (name: string) =>
     name.length > 10 ? name.slice(0, 10) + "…" : name;
 
@@ -64,11 +85,10 @@ export function ConversationList({
       </div>
 
       {onCreateEtiquette && (
-        <div className="convo-etiquette-panel">
+        <div className="convo-etiquette-panel convo-etiquette-panel--compact">
           <div className="convo-etiquette-header">
-            <span className="convo-etiquette-title">Labels</span>
 
-            <div className="convo-etiquette-dropdown">
+            <div className="convo-etiquette-dropdown" ref={dropdownRef}>
               <button
                 type="button"
                 className="convo-etiquette-dropdown-toggle"
@@ -86,7 +106,7 @@ export function ConversationList({
                   ) : (
                     <>
                       <span className="convo-etiquette-dropdown-dot is-all" />
-                      All Labels
+                      <span className="convo-etiquette-label-text">Labels</span>
                     </>
                   )}
                 </span>
@@ -94,7 +114,7 @@ export function ConversationList({
               </button>
 
               {isEtiquetteMenuOpen && (
-                <div className="convo-etiquette-dropdown-menu">
+                <div className="convo-etiquette-dropdown-menu etiq-menu-bg">
                   <button
                     type="button"
                     className={
@@ -236,23 +256,14 @@ export function ConversationList({
                 <span className="convo-item-assignee">{assigneeLabel}</span>
                 <div className="convo-item-meta">
                   {c.etiquettes && c.etiquettes.length > 0 && (
-                    <div className="convo-item-tags">
+                    <div className="convo-item-tags flex items-center gap-1">
                       {c.etiquettes.map((tag: { id: string; name: string; color: string }) => (
                         <span
                           key={tag.id}
-                          className="convo-item-tag"
-                          style={{
-                            borderColor: tag.color,
-                            backgroundColor: `${tag.color}1a`,
-                            color: tag.color,
-                          }}
-                        >
-                          <span
-                            className="convo-etiquette-tag-dot"
-                            style={{ backgroundColor: tag.color }}
-                          />
-                          {truncateEtiquetteName(tag.name)}
-                        </span>
+                          className="inline-flex h-2.5 w-2.5 rounded-full border border-white/40 shadow-sm"
+                          style={{ backgroundColor: tag.color }}
+                          title={tag.name}
+                        />
                       ))}
                     </div>
                   )}
@@ -274,8 +285,11 @@ export function ConversationList({
       </div>
 
       {etiquetteToDelete && (
-        <div className="convo-etiquette-modal-overlay">
-          <div className="convo-etiquette-modal">
+        <div
+          className="convo-etiquette-modal-overlay"
+          onClick={() => setEtiquetteToDelete(null)}
+        >
+          <div className="convo-etiquette-modal" onClick={(e) => e.stopPropagation()}>
             <div className="convo-etiquette-form">
               <div className="convo-etiquette-modal-header-row">
                 <div>
@@ -325,8 +339,14 @@ export function ConversationList({
       )}
 
       {isCreatingEtiquette && (
-        <div className="convo-etiquette-modal-overlay">
-          <div className="convo-etiquette-modal">
+        <div
+          className="convo-etiquette-modal-overlay"
+          onClick={() => {
+            setIsCreatingEtiquette(false);
+            setNewEtiquetteName("");
+          }}
+        >
+          <div className="convo-etiquette-modal" onClick={(e) => e.stopPropagation()}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();

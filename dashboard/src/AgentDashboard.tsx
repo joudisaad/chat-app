@@ -7,7 +7,7 @@ import {
   type MouseEvent,
 } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Team } from "./App";
+import type { Team, Theme } from "./App";
 import "./AgentDashboard.css";
 import { ConversationList } from "./features/inboxes/ConversationList";
 import { ChatPanel } from "./features/inboxes/ChatPanel";
@@ -66,11 +66,13 @@ function getUserIdFromToken(token: string | null): string | null {
 interface AgentDashboardProps {
   team: Team | null;
   activeInboxId?: string | null;
+  theme: Theme;
 }
 
 export default function AgentDashboard({
   team,
   activeInboxId,
+  theme,
 }: AgentDashboardProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -697,37 +699,44 @@ export default function AgentDashboard({
 
   return (
     <>
-      <div className="agent-dashboard-grid">
-        <ConversationList
-          team={team}
-          conversations={conversations}
-          filteredConversations={filteredConversations}
-          loadingConvos={loadingConvos}
-          activeInboxId={activeInboxId}
-          activeRoomId={activeRoomId}
-          currentUserId={currentUserId}
-          etiquettes={etiquettes}
-          onCreateEtiquette={handleCreateEtiquette}
-          onDeleteEtiquette={handleDeleteEtiquette}
-          selectedEtiquette={selectedEtiquette}
-          setSelectedEtiquette={setSelectedEtiquette}
-          onSelectRoom={setActiveRoomId}
-          onContextMenu={handleConversationContextMenu}
-        />
+      <div className="flex h-full min-h-0 w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
+        {/* LEFT: Conversation list, fixed width */}
+        <div className="flex h-full w-80 flex-none flex-col border-r border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/40">
+          <ConversationList
+            team={team}
+            conversations={conversations}
+            filteredConversations={filteredConversations}
+            loadingConvos={loadingConvos}
+            activeInboxId={activeInboxId}
+            activeRoomId={activeRoomId}
+            currentUserId={currentUserId}
+            etiquettes={etiquettes}
+            onCreateEtiquette={handleCreateEtiquette}
+            onDeleteEtiquette={handleDeleteEtiquette}
+            selectedEtiquette={selectedEtiquette}
+            setSelectedEtiquette={setSelectedEtiquette}
+            onSelectRoom={setActiveRoomId}
+            onContextMenu={handleConversationContextMenu}
+          />
+        </div>
 
-        <ChatPanel
-          activeRoomId={activeRoomId}
-          messages={messages}
-          loadingMessages={loadingMessages}
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
-          insertAtCursor={insertAtCursor}
-          messagesContainerRef={messagesContainerRef}
-          messagesEndRef={messagesEndRef}
-          textareaRef={textareaRef}
-          error={error}
-        />
+        {/* RIGHT: Chat panel, takes all remaining width */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <ChatPanel
+            theme={theme}
+            activeRoomId={activeRoomId}
+            messages={messages}
+            loadingMessages={loadingMessages}
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            insertAtCursor={insertAtCursor}
+            messagesContainerRef={messagesContainerRef}
+            messagesEndRef={messagesEndRef}
+            textareaRef={textareaRef}
+            error={error}
+          />
+        </div>
       </div>
 
       <ConversationContextMenu

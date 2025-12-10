@@ -138,82 +138,46 @@ export function App() {
     return (
       <div className={`app-root theme-${theme}`}>
         <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: theme === "dark" ? "#020617" : "#f3f4f6",
-            padding: 24,
-          }}
+          className={`min-h-screen flex items-center justify-center px-4 transition-colors duration-200 ${
+            theme === "dark" ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"
+          }`}
         >
           <div
-            style={{
-              width: 360,
-              borderRadius: 16,
-              padding: 24,
-              background: theme === "dark" ? "#020617" : "#ffffff",
-              border: theme === "dark" ? "1px solid #111827" : "1px solid #e5e7eb",
-              boxShadow:
-                theme === "dark"
-                  ? "0 22px 60px rgba(15,23,42,0.85)"
-                  : "0 18px 40px rgba(15,23,42,0.12)",
-            }}
+            className={`w-full max-w-md rounded-2xl border shadow-2xl px-6 py-5 sm:px-8 sm:py-6 transition-colors duration-200 ${
+              theme === "dark"
+                ? "bg-slate-900/80 border-slate-800 shadow-black/60"
+                : "bg-white border-slate-200 shadow-slate-900/10"
+            }`}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 16,
-                alignItems: "center",
-              }}
-            >
+            <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 600,
-                    color: theme === "dark" ? "#e5e7eb" : "#111827",
-                  }}
+                  className={`text-lg font-semibold leading-tight ${
+                    theme === "dark" ? "text-slate-100" : "text-slate-900"
+                  }`}
                 >
                   Sign in to ChatApp
                 </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#9ca3af",
-                    marginTop: 2,
-                  }}
-                >
+                <div className="mt-1 text-xs text-slate-400">
                   Internal Crisp-style inbox (beta)
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                style={{
-                  borderRadius: 999,
-                  border: "1px solid #4b5563",
-                  background: "transparent",
-                  color: "#9ca3af",
-                  padding: "4px 10px",
-                  fontSize: 11,
-                  cursor: "pointer",
-                }}
+                className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors duration-150
+                border-slate-600/70 text-slate-300 hover:border-slate-400 hover:text-slate-100
+                dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-400
+                bg-transparent"
               >
-                {theme === "dark" ? "Light" : "Dark"}
+                {theme === "dark" ? "Light mode" : "Dark mode"}
               </button>
             </div>
 
             <LoginForm onLogin={handleLogin} theme={theme} />
 
             {error && (
-              <div
-                style={{
-                  marginTop: 12,
-                  fontSize: 12,
-                  color: "#f97373",
-                }}
-              >
+              <div className="mt-3 text-xs text-red-400">
                 {error}
               </div>
             )}
@@ -227,15 +191,9 @@ export function App() {
   if (loading && !team) {
     return (
       <div
-        style={{
-          minHeight: "100vh",
-          background: theme === "dark" ? "#020617" : "#f3f4f6",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#9ca3af",
-          fontSize: 13,
-        }}
+        className={`min-h-screen flex items-center justify-center text-sm text-slate-400 transition-colors duration-200 ${
+          theme === "dark" ? "bg-slate-950" : "bg-slate-50"
+        }`}
       >
         Loading workspace…
       </div>
@@ -274,56 +232,49 @@ function LoginForm({ onLogin, theme }: LoginFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <label style={{ fontSize: 12, color: "#9ca3af" }}>
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3"
+    >
+      <label className="text-xs font-medium text-slate-400">
         Email
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{
-            marginTop: 4,
-            width: "100%",
-            borderRadius: 8,
-            border: theme === "dark" ? "1px solid #1f2937" : "1px solid #d1d5db",
-            padding: "8px 10px",
-            fontSize: 13,
-            background: theme === "dark" ? "#020617" : "#ffffff",
-            color: theme === "dark" ? "#e5e7eb" : "#111827",
-          }}
+          className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors duration-150
+          ${theme === "dark"
+            ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400"
+            : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
+          }`}
+          placeholder="you@example.com"
+          autoComplete="email"
         />
       </label>
-      <label style={{ fontSize: 12, color: "#9ca3af" }}>
+
+      <label className="text-xs font-medium text-slate-400">
         Password
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{
-            marginTop: 4,
-            width: "100%",
-            borderRadius: 8,
-            border: theme === "dark" ? "1px solid #1f2937" : "1px solid #d1d5db",
-            padding: "8px 10px",
-            fontSize: 13,
-            background: theme === "dark" ? "#020617" : "#ffffff",
-            color: theme === "dark" ? "#e5e7eb" : "#111827",
-          }}
+          className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors duration-150
+          ${theme === "dark"
+            ? "border-slate-800 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400"
+            : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
+          }`}
+          placeholder="••••••••"
+          autoComplete="current-password"
         />
       </label>
+
       <button
         type="submit"
         disabled={submitting}
-        style={{
-          marginTop: 6,
-          borderRadius: 999,
-          border: "none",
-          padding: "8px 12px",
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: submitting ? "default" : "pointer",
-          background: submitting ? "#4b5563" : "#22c55e",
-          color: "#022c22",
-        }}
+        className={`mt-2 inline-flex h-9 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors duration-150
+        ${submitting
+          ? "bg-slate-600 text-slate-300 cursor-default"
+          : "bg-emerald-400 text-slate-900 hover:bg-emerald-300 active:bg-emerald-500"
+        }`}
       >
         {submitting ? "Signing in…" : "Sign in"}
       </button>
