@@ -1,5 +1,5 @@
 // api/src/conversations/conversations.controller.ts
-import { Controller, Get, Req, UseGuards, Body, Patch, Param } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Body, Patch, Param, Post, Delete } from '@nestjs/common';
 import { ConversationsService } from './conversations.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
@@ -44,5 +44,25 @@ export class ConversationsController {
   ) {
     const teamId = req.user.teamId;
     return this.conversationsService.updateStatus(id, status, teamId);
+  }
+
+  @Post(':conversationId/etiquettes/:etiquetteId')
+  async addEtiquetteToConversation(
+    @Req() req: any,
+    @Param('conversationId') conversationId: string,
+    @Param('etiquetteId') etiquetteId: string,
+  ) {
+    const teamId = req.user.teamId;
+    return this.conversationsService.addEtiquetteToConversation(teamId, conversationId, etiquetteId);
+  }
+
+  @Delete(':conversationId/etiquettes/:etiquetteId')
+  async removeEtiquetteFromConversation(
+    @Req() req: any,
+    @Param('conversationId') conversationId: string,
+    @Param('etiquetteId') etiquetteId: string,
+  ) {
+    const teamId = req.user.teamId;
+    return this.conversationsService.removeEtiquetteFromConversation(teamId, conversationId, etiquetteId);
   }
 }

@@ -1,4 +1,4 @@
-import type { Inbox } from "../../AgentDashboard";
+import type { Inbox, Etiquette } from "../../AgentDashboard";
 
 interface ContextMenuState {
   x: number;
@@ -11,10 +11,13 @@ interface ConversationContextMenuProps {
   inboxes: Inbox[];
   currentInboxId: string | null;
   currentUserId: string | null;
+  etiquettes?: Etiquette[];
+  conversationEtiquettes?: Etiquette[];
   onClose: () => void;
   onMoveToInbox: (inboxId: string | null) => void;
   onAssign: (assigneeId: string | null) => void;
   onUpdateStatus: (status: "OPEN" | "PENDING" | "RESOLVED") => void;
+  onApplyEtiquette?: (conversationId: string, etiquetteId: string) => void;
 }
 
 export function ConversationContextMenu({
@@ -22,10 +25,13 @@ export function ConversationContextMenu({
   inboxes,
   currentInboxId,
   currentUserId,
+  etiquettes,
+  conversationEtiquettes,
   onClose,
   onMoveToInbox,
   onAssign,
   onUpdateStatus,
+  onApplyEtiquette,
 }: ConversationContextMenuProps) {
   if (!contextMenu) return null;
 
@@ -243,6 +249,57 @@ export function ConversationContextMenu({
         >
           Mark as resolved
         </button>
+        {etiquettes && etiquettes.length > 0 && onApplyEtiquette && (
+          <>
+            <div
+              style={{
+                margin: "6px 0",
+                borderTop: "1px solid var(--border-color)",
+              }}
+            />
+
+            <div
+              style={{
+                padding: "4px 10px 6px",
+                fontSize: 11,
+                textTransform: "uppercase",
+                letterSpacing: 0.04,
+                color: "var(--text-secondary)",
+              }}
+            >
+              Labels
+            </div>
+
+    {etiquettes.map((tag) => {
+      const isChecked = (conversationEtiquettes || []).some(
+        (e) => e.id === tag.id
+      );
+
+      return (
+        <button
+          key={tag.id}
+          type="button"
+          onClick={() =>
+            onApplyEtiquette(contextMenu.conversationId, tag.id)
+          }
+          className={
+            "context-menu-item" +
+            (isChecked ? " context-menu-item-checked" : "")
+          }
+        >
+          <span className="context-menu-check">
+            {isChecked ? "✓" : ""}
+          </span>
+          <span
+            className="context-menu-color-dot"
+            style={{ backgroundColor: tag.color }}
+          />
+          <span className="context-menu-item-label">{tag.name}</span>
+        </button>
+      );
+    })}
+          </>
+        )}
       </div>
     </div>
   );

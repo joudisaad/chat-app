@@ -235,8 +235,26 @@ export function ConversationList({
               <div className="convo-item-bottom">
                 <span className="convo-item-assignee">{assigneeLabel}</span>
                 <div className="convo-item-meta">
-                  {c.etiquette && (
-                    <span className="convo-item-tag">{c.etiquette}</span>
+                  {c.etiquettes && c.etiquettes.length > 0 && (
+                    <div className="convo-item-tags">
+                      {c.etiquettes.map((tag: { id: string; name: string; color: string }) => (
+                        <span
+                          key={tag.id}
+                          className="convo-item-tag"
+                          style={{
+                            borderColor: tag.color,
+                            backgroundColor: `${tag.color}1a`,
+                            color: tag.color,
+                          }}
+                        >
+                          <span
+                            className="convo-etiquette-tag-dot"
+                            style={{ backgroundColor: tag.color }}
+                          />
+                          {truncateEtiquetteName(tag.name)}
+                        </span>
+                      ))}
+                    </div>
                   )}
                   {c.status && (
                     <span

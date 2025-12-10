@@ -22,6 +22,8 @@ export interface Conversation {
   status?: "OPEN" | "PENDING" | "RESOLVED";
   assigneeId?: string | null;
   assigneeName?: string | null;
+  etiquettes?: { id: string; name: string; color: string; slug?: string }[];
+  // optional primary label name for backwards-compat display
   etiquette?: string | null;
 }
 
@@ -119,9 +121,16 @@ export default function AgentDashboard({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as Conversation[];
         if (!cancelled) {
-          setConversations(data);
-          if (!activeRoomId && data.length > 0) {
-            setActiveRoomId(data[0].roomId);
+          const withPrimaryEtiquette = data.map((c) => ({
+            ...c,
+            etiquette:
+              c.etiquettes && c.etiquettes.length > 0
+                ? c.etiquettes[0].name
+                : null,
+          }));
+          setConversations(withPrimaryEtiquette);
+          if (!activeRoomId && withPrimaryEtiquette.length > 0) {
+            setActiveRoomId(withPrimaryEtiquette[0].roomId);
           }
         }
       } catch (e: any) {
@@ -480,6 +489,84 @@ export default function AgentDashboard({
     }
   };
 
+  const handleApplyEtiquetteToConversation = async (
+    conversationId: string,
+    etiquetteId: string
+  ) => {
+    if (!token) return;
+
+    // Find the conversation and etiquette objects so we can decide
+    // whether this should ADD or REMOVE the label (toggle behavior).
+    const conversation = conversations.find((c) => c.id === conversationId);
+    const tag = etiquettes.find((t) => t.id === etiquetteId);
+
+    if (!conversation || !tag) {
+      console.warn("Conversation or etiquette not found for toggle", {
+        conversationId,
+        etiquetteId,
+      });
+      return;
+    }
+
+    const alreadyHas = (conversation.etiquettes || []).some(
+      (e) => e.id === etiquetteId
+    );
+
+    const method = alreadyHas ? "DELETE" : "POST";
+
+    try {
+      const res = await fetch(
+        `${API_URL}/conversations/${encodeURIComponent(
+          conversationId
+        )}/etiquettes/${encodeURIComponent(etiquetteId)}`,
+        {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error(
+          `Failed to ${alreadyHas ? "remove" : "apply"} etiquette to conversation`,
+          await res.text()
+        );
+        return;
+      }
+
+      // Update local state so the label list is in sync immediately
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== conversationId) return c;
+
+          const existing = c.etiquettes || [];
+          let updatedEtiquettes;
+
+          if (alreadyHas) {
+            // Remove the etiquette
+            updatedEtiquettes = existing.filter((e) => e.id !== etiquetteId);
+          } else {
+            // Add (or replace) the etiquette
+            const withoutCurrent = existing.filter((e) => e.id !== tag.id);
+            updatedEtiquettes = [...withoutCurrent, tag];
+          }
+
+          return {
+            ...c,
+            etiquettes: updatedEtiquettes,
+            etiquette: updatedEtiquettes[0]?.name ?? null,
+          };
+        })
+      );
+    } catch (e) {
+      console.error("Error toggling etiquette on conversation", e);
+    } finally {
+      setContextMenu(null);
+    }
+  };
+
   const handleConversationContextMenu = (
     event: MouseEvent<HTMLButtonElement>,
     conversationId: string
@@ -592,7 +679,7 @@ export default function AgentDashboard({
   const filteredConversations = conversations.filter((c) => {
     const matchesInbox = activeInboxId ? c.inboxId === activeInboxId : true;
     const matchesEtiquette = selectedEtiquette
-      ? c.etiquette === selectedEtiquette
+      ? (c.etiquettes || []).some((tag) => tag.slug === selectedEtiquette)
       : true;
     return matchesInbox && matchesEtiquette;
   });
@@ -604,51 +691,58 @@ export default function AgentDashboard({
           .inboxId
       : null;
 
-return (
-  <>
-    <div className="agent-dashboard-grid">
-      <ConversationList
-        team={team}
-        conversations={conversations}
-        filteredConversations={filteredConversations}
-        loadingConvos={loadingConvos}
-        activeInboxId={activeInboxId}
-        activeRoomId={activeRoomId}
+  const selectedConversation = conversations.find(
+    (c) => c.id === contextMenu?.conversationId
+  );
+
+  return (
+    <>
+      <div className="agent-dashboard-grid">
+        <ConversationList
+          team={team}
+          conversations={conversations}
+          filteredConversations={filteredConversations}
+          loadingConvos={loadingConvos}
+          activeInboxId={activeInboxId}
+          activeRoomId={activeRoomId}
+          currentUserId={currentUserId}
+          etiquettes={etiquettes}
+          onCreateEtiquette={handleCreateEtiquette}
+          onDeleteEtiquette={handleDeleteEtiquette}
+          selectedEtiquette={selectedEtiquette}
+          setSelectedEtiquette={setSelectedEtiquette}
+          onSelectRoom={setActiveRoomId}
+          onContextMenu={handleConversationContextMenu}
+        />
+
+        <ChatPanel
+          activeRoomId={activeRoomId}
+          messages={messages}
+          loadingMessages={loadingMessages}
+          input={input}
+          setInput={setInput}
+          onSend={handleSend}
+          insertAtCursor={insertAtCursor}
+          messagesContainerRef={messagesContainerRef}
+          messagesEndRef={messagesEndRef}
+          textareaRef={textareaRef}
+          error={error}
+        />
+      </div>
+
+      <ConversationContextMenu
+        contextMenu={contextMenu}
+        inboxes={inboxes}
+        currentInboxId={currentInboxId}
         currentUserId={currentUserId}
         etiquettes={etiquettes}
-        onCreateEtiquette={handleCreateEtiquette}
-        onDeleteEtiquette={handleDeleteEtiquette}
-        selectedEtiquette={selectedEtiquette}
-        setSelectedEtiquette={setSelectedEtiquette}
-        onSelectRoom={setActiveRoomId}
-        onContextMenu={handleConversationContextMenu}
+        conversationEtiquettes={selectedConversation?.etiquettes ?? []}
+        onClose={() => setContextMenu(null)}
+        onMoveToInbox={handleMoveToInbox}
+        onAssign={handleAssignConversation}
+        onUpdateStatus={handleUpdateStatus}
+        onApplyEtiquette={handleApplyEtiquetteToConversation}
       />
-
-      <ChatPanel
-        activeRoomId={activeRoomId}
-        messages={messages}
-        loadingMessages={loadingMessages}
-        input={input}
-        setInput={setInput}
-        onSend={handleSend}
-        insertAtCursor={insertAtCursor}
-        messagesContainerRef={messagesContainerRef}
-        messagesEndRef={messagesEndRef}
-        textareaRef={textareaRef}
-        error={error}
-      />
-    </div>
-
-    <ConversationContextMenu
-      contextMenu={contextMenu}
-      inboxes={inboxes}
-      currentInboxId={currentInboxId}
-      currentUserId={currentUserId}
-      onClose={() => setContextMenu(null)}
-      onMoveToInbox={handleMoveToInbox}
-      onAssign={handleAssignConversation}
-      onUpdateStatus={handleUpdateStatus}
-    />
-  </>
-);
+    </>
+  );
 }
