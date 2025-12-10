@@ -46,6 +46,27 @@ export class ConversationsController {
     return this.conversationsService.updateStatus(id, status, teamId);
   }
 
+  // ✅ NEW — mark conversation as read by current agent
+  @Patch(':id/read')
+  async markAsRead(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    const teamId: string = req.user.teamId;
+    const agentId: string = req.user.userId ?? req.user.sub;
+    return this.conversationsService.markAsRead(teamId, id, agentId);
+  }
+
+  @Post(':id/mark-read')
+  async markReadViaPost(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    const teamId: string = req.user.teamId;
+    const agentId: string = req.user.userId ?? req.user.sub;
+    return this.conversationsService.markAsRead(teamId, id, agentId);
+  }
+
   @Post(':conversationId/etiquettes/:etiquetteId')
   async addEtiquetteToConversation(
     @Req() req: any,
@@ -64,5 +85,17 @@ export class ConversationsController {
   ) {
     const teamId = req.user.teamId;
     return this.conversationsService.removeEtiquetteFromConversation(teamId, conversationId, etiquetteId);
+  }
+
+  @Patch(':id/mark-read')
+  @UseGuards(JwtAuthGuard)
+  async markRead(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    const teamId: string = req.user.teamId;
+    const agentId: string = req.user.userId ?? req.user.sub;
+
+    return this.conversationsService.markAsRead(teamId, id, agentId);
   }
 }

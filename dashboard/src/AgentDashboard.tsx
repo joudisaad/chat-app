@@ -25,6 +25,10 @@ export interface Conversation {
   etiquettes?: { id: string; name: string; color: string; slug?: string }[];
   // optional primary label name for backwards-compat display
   etiquette?: string | null;
+  unreadCount?: number;
+  lastAgentReadAt?: string | null;
+  lastReadByAgentId?: string | null;
+  lastReadByAgentName?: string | null;
 }
 
 export interface Message {
@@ -96,6 +100,8 @@ export default function AgentDashboard({
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // NEW: keep track of processed message ids (for socket duplicates)
+const seenMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Socket.io client for real-time updates
   const socketRef = useRef<Socket | null>(null);
@@ -231,29 +237,64 @@ export default function AgentDashboard({
       console.error("Socket connect error", err);
     });
 
-    const handleNewMessage = (msg: Message) => {
-      // Update messages in the currently active room
-      if (activeRoomRef.current && msg.roomId === activeRoomRef.current) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
-      }
+const handleNewMessage = (msg: Message) => {
+  // 🔒 Dedupe: if we've already seen this message id, ignore
+  if (seenMessageIdsRef.current.has(msg.id)) {
+    return;
+  }
+  seenMessageIdsRef.current.add(msg.id);
 
-      // Keep conversation previews in sync
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.roomId === msg.roomId
-            ? {
-                ...c,
-                lastPreview: msg.content,
-                lastSender: msg.sender,
-                lastMessageAt: msg.createdAt,
-              }
-            : c
-        )
-      );
+  // 1) If this is the active conversation, append the message
+  if (activeRoomRef.current && msg.roomId === activeRoomRef.current) {
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+  }
+
+  // 2) Upsert conversation in the list (works for old + brand new rooms)
+  setConversations((prev) => {
+    const index = prev.findIndex((c) => c.roomId === msg.roomId);
+
+    const isActive = activeRoomRef.current === msg.roomId;
+    const isVisitor = msg.sender === "Visitor";
+
+    if (index !== -1) {
+      const updated = [...prev];
+      const existing = updated[index];
+
+      const increment = !isActive && isVisitor ? 1 : 0;
+
+      updated[index] = {
+        ...existing,
+        lastPreview: msg.content,
+        lastSender: msg.sender,
+        lastMessageAt: msg.createdAt,
+        unreadCount: (existing.unreadCount ?? 0) + increment,
+      };
+
+      return updated;
+    }
+
+    // New conversation
+    const placeholder: Conversation = {
+      id: msg.roomId,
+      roomId: msg.roomId,
+      lastPreview: msg.content,
+      lastSender: msg.sender,
+      lastMessageAt: msg.createdAt,
+      inboxId: null,
+      status: "OPEN",
+      assigneeId: null,
+      assigneeName: null,
+      etiquettes: [],
+      etiquette: null,
+      unreadCount: isVisitor ? 1 : 0,
     };
+
+    return [placeholder, ...prev];
+  });
+};
 
     socket.on("new_message", handleNewMessage);
 
@@ -310,13 +351,17 @@ export default function AgentDashboard({
   }, [token, activeRoomId]);
 
   // Auto-scroll to the last message when messages or activeRoomId change
-  useEffect(() => {
-    if (!messagesEndRef.current) return;
-    const id = window.setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [activeRoomId, messages]);
+useEffect(() => {
+  const container = messagesContainerRef.current;
+
+  if (container) {
+    // ✅ Jump instantly to the very bottom, no smooth animation
+    container.scrollTop = container.scrollHeight;
+  } else if (messagesEndRef.current) {
+    // Fallback if container isn't available
+    messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+  }
+}, [messages, activeRoomId]);
 
   // Helper to insert or surround text at cursor in textarea
   const insertAtCursor = (snippet: string, surround = false) => {
@@ -435,6 +480,38 @@ export default function AgentDashboard({
       setError("Failed to send message");
     }
   };
+
+const handleSelectRoom = async (roomId: string) => {
+  setActiveRoomId(roomId);
+
+  if (!token) return;
+
+  const convo = conversations.find((c) => c.roomId === roomId);
+  if (!convo) return;
+
+  try {
+    const res = await fetch(`${API_URL}/conversations/${convo.id}/mark-read`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("Failed to mark as read", await res.text());
+      return;
+    }
+
+    const updated = await res.json();
+
+    // VERY IMPORTANT: merge the updated conversation into state
+    setConversations((prev) =>
+      prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+    );
+  } catch (err) {
+    console.error("Error marking as read", err);
+  }
+};
 
 
   const handleCreateEtiquette = async (data: { name: string; color: string }) => {
@@ -715,7 +792,7 @@ export default function AgentDashboard({
             onDeleteEtiquette={handleDeleteEtiquette}
             selectedEtiquette={selectedEtiquette}
             setSelectedEtiquette={setSelectedEtiquette}
-            onSelectRoom={setActiveRoomId}
+            onSelectRoom={handleSelectRoom}
             onContextMenu={handleConversationContextMenu}
           />
         </div>

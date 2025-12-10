@@ -41,7 +41,11 @@ model Conversation {
   assigneeId String?
   assignee   User?              @relation("ConversationAssignee", fields: [assigneeId], references: [id])
 
-  etiquettes ConversationEtiquette[]
+  etiquettes        ConversationEtiquette[]
+  unreadCount       Int                     @default(0)
+  lastAgentReadAt   DateTime?
+  lastReadByAgentId String?
+  lastReadByAgent   User?                   @relation("ConversationLastRead", fields: [lastReadByAgentId], references: [id])
 }
 
 model ConversationEtiquette {
@@ -60,10 +64,14 @@ model Etiquette {
   slug        String
   color       String
   description String?
-  teamId      String
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  conversations ConversationEtiquette[]
 
   @@unique([teamId, slug])
 }
@@ -74,14 +82,14 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  publicKey String?  @unique
+  publicKey String? @unique
 
   memberships    TeamMembership[]
   conversations  Conversation[]
   messages       Message[]
   inboxes        Inbox[]
   widgetSettings WidgetSettings?
-  etiquettes     Etiquette[]   // <-- add this
+  etiquettes     Etiquette[] // <-- add this
 }
 
 model Inbox {
@@ -108,7 +116,9 @@ model User {
 
   memberships           TeamMembership[]
   assignedConversations Conversation[]   @relation("ConversationAssignee")
+  lastReadConversations Conversation[]   @relation("ConversationLastRead")
 }
+
 model TeamMembership {
   id        String   @id @default(uuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

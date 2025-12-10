@@ -227,6 +227,16 @@ export function ConversationList({
               : "Assigned"
             : "Unassigned";
 
+          const unreadCount = (c as any).unreadCount ?? 0;
+          const isUnread = unreadCount > 0;
+
+          const seenByLabel =
+            !isUnread && (c as any).lastReadByAgentName
+              ? (c as any).lastReadByAgentId === currentUserId
+                ? "Seen by you"
+                : `Seen by ${(c as any).lastReadByAgentName}`
+              : null;
+
           return (
             <button
               key={c.id}
@@ -236,6 +246,7 @@ export function ConversationList({
               className={
                 "convo-item" +
                 (active ? " is-active" : "") +
+                (isUnread ? " is-unread" : "") +
                 (c.status ? ` status-${c.status.toLowerCase()}` : "")
               }
             >
@@ -255,6 +266,16 @@ export function ConversationList({
               <div className="convo-item-bottom">
                 <span className="convo-item-assignee">{assigneeLabel}</span>
                 <div className="convo-item-meta">
+                  {isUnread ? (
+                    <span className="convo-item-unread-badge">
+                      <span className="convo-item-unread-count">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                      <span className="convo-item-unread-label">new</span>
+                    </span>
+                  ) : seenByLabel ? (
+                    <span className="convo-item-seen-by">{seenByLabel}</span>
+                  ) : null}
                   {c.etiquettes && c.etiquettes.length > 0 && (
                     <div className="convo-item-tags flex items-center gap-1">
                       {c.etiquettes.map((tag: { id: string; name: string; color: string }) => (

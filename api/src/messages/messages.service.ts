@@ -6,52 +6,71 @@ import { PrismaService } from '../prisma/prisma.service';
 export class MessagesService {
   constructor(private readonly prisma: PrismaService) {}
 
-// avant : create(data)
-// après :
-async create(data: { content: string; sender: string; roomId: string }, teamId: string) {
-  const message = await this.prisma.message.create({
-    data: {
-      ...data,
-      teamId,
-    },
-  });
+  async create(
+    data: { content: string; sender: string; roomId: string },
+    teamId: string,
+  ) {
+    // Detect if this is a customer/visitor message (unread for agents)
+    const isFromCustomer =
+      data.sender &&
+      data.sender.toLowerCase() !== 'agent' &&
+      data.sender.toLowerCase() !== 'system';
 
-  await this.prisma.conversation.upsert({
-    where: { roomId: data.roomId },
-    update: {
+    const message = await this.prisma.message.create({
+      data: {
+        ...data,
+        teamId,
+      },
+    });
+
+    // Build update data for existing conversation
+    const updateData: any = {
       lastSender: data.sender,
       lastPreview: data.content.slice(0, 120),
       lastMessageAt: message.createdAt,
-      teamId, // au cas où
-    },
-    create: {
+      teamId,
+    };
+
+    if (isFromCustomer) {
+      // Increment unread counter when a customer message arrives
+      updateData.unreadCount = { increment: 1 };
+    }
+
+    // Build create data for a brand new conversation
+    const createData: any = {
       roomId: data.roomId,
       lastSender: data.sender,
       lastPreview: data.content.slice(0, 120),
       lastMessageAt: message.createdAt,
       teamId,
-    },
-  });
+      unreadCount: isFromCustomer ? 1 : 0,
+    };
 
-  return message;
-}
-async listConversations(teamId: string) {
-  return this.prisma.conversation.findMany({
-    where: { teamId },
-    orderBy: { lastMessageAt: "desc" },
-    take: 50,
-  });
-}
-async findAll(roomId?: string, teamId?: string) {
-  const where: any = {};
+    await this.prisma.conversation.upsert({
+      where: { roomId: data.roomId },
+      update: updateData,
+      create: createData,
+    });
 
-  if (roomId) where.roomId = roomId;
-  if (teamId) where.teamId = teamId;
+    return message;
+  }
+  async listConversations(teamId: string) {
+    return this.prisma.conversation.findMany({
+      where: { teamId },
+      orderBy: { lastMessageAt: "desc" },
+      take: 50,
+    });
+  }
+  async findAll(roomId?: string, teamId?: string) {
+    const where: any = {};
 
-  return this.prisma.message.findMany({
-    where,
-    orderBy: { createdAt: "asc" },
-    take: 200,
-  });
-}
+    if (roomId) where.roomId = roomId;
+    if (teamId) where.teamId = teamId;
+
+    return this.prisma.message.findMany({
+      where,
+      orderBy: { createdAt: "asc" },
+      take: 200,
+    });
+  }
 }

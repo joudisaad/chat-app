@@ -63,6 +63,7 @@ export function ChatPanel({
         // full-height column, colors driven by CSS variables
         "flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden panel"
       }
+      style={{ maxHeight: "100vh" }}
     >
       {/* HEADER */}
       <div className="flex items-baseline justify-between border-b border-[color:var(--border-color)] px-4 py-2 text-sm">
@@ -79,7 +80,7 @@ export function ChatPanel({
       {/* MESSAGES (scrollable area only) */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 min-h-0 max-h-full overflow-y-auto px-4 py-3 space-y-3"
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3"
       >
         {loadingMessages && (
           <div className="text-xs text-[color:var(--text-secondary)]">

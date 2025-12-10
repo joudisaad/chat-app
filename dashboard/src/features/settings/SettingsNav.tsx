@@ -7,7 +7,7 @@ interface SettingsNavProps {
   onChange: (tab: SettingsTab) => void;
 }
 
-const SETTINGS_ITEMS: { id: SettingsTab; label: string; description?: string }[] = [
+const SETTINGS_ITEMS = [
   { id: "widget", label: "Widget appearance", description: "Launcher style & install code" },
   { id: "general", label: "General", description: "Workspace name & language" },
   { id: "team", label: "Team & members", description: "Invite and manage agents" },
@@ -17,49 +17,30 @@ const SETTINGS_ITEMS: { id: SettingsTab; label: string; description?: string }[]
 
 export const SettingsNav: React.FC<SettingsNavProps> = ({ active, onChange }) => {
   return (
-    <nav
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        padding: "8px 0",
-      }}
-    >
+    <nav className="flex flex-col gap-2 py-2">
       {SETTINGS_ITEMS.map((item) => {
         const isActive = item.id === active;
+
         return (
           <button
             key={item.id}
             onClick={() => onChange(item.id)}
-            style={{
-              textAlign: "left",
-              border: "none",
-              borderRadius: 10,
-              padding: "8px 10px",
-              width: "100%",
-              cursor: "pointer",
-              background: isActive
-                ? "linear-gradient(135deg, rgba(59,130,246,0.16), rgba(34,197,94,0.18))"
-                : "transparent",
-              color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-            }}
+            className={[
+              "text-left w-full rounded-xl px-3 py-2 transition-all",
+              "border bg-white/90 dark:bg-slate-900/80 dark:border-slate-800/70",
+              "hover:border-emerald-500/70 hover:bg-emerald-50/70 dark:hover:bg-slate-800/60",
+              isActive
+                ? "border-emerald-500/70 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm"
+                : "border-slate-200/70",
+              "cursor-pointer"
+            ].join(" ")}
           >
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 500,
-                marginBottom: item.description ? 2 : 0,
-              }}
-            >
+            <div className="text-[13px] font-medium text-slate-900 dark:text-slate-100 mb-[2px]">
               {item.label}
             </div>
+
             {item.description && (
-              <div
-                style={{
-                  fontSize: 11,
-                  opacity: 0.8,
-                }}
-              >
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {item.description}
               </div>
             )}

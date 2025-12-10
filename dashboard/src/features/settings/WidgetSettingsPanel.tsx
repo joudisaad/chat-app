@@ -116,53 +116,34 @@ export const WidgetSettingsPanel: React.FC<WidgetSettingsPanelProps> = ({
     : "You need a team public key to generate the install snippet.";
 
   return (
-    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-      <header style={{ marginBottom: 16 }}>
-        <h2
-          style={{
-            fontSize: 18,
-            fontWeight: 600,
-            margin: 0,
-            marginBottom: 4,
-            color: "var(--text-primary)",
-          }}
-        >
-          Widget appearance & install
+    <div className="space-y-6 text-[13px] text-[color:var(--text-secondary)]">
+      {/* Header */}
+      <header className="space-y-1">
+        <h2 className="m-0 text-[18px] font-semibold text-[color:var(--text-primary)]">
+          Widget appearance &amp; install
         </h2>
-        <p style={{ margin: 0 }}>Control how the chat launcher looks on your website.</p>
+        <p className="m-0 text-[13px]">
+          Control how the chat launcher looks on your website.
+        </p>
       </header>
 
       {loading ? (
-        <div style={{ fontSize: 13 }}>Loading widget settings…</div>
+        <div className="text-[13px]">Loading widget settings…</div>
       ) : (
         <>
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)",
-              gap: 16,
-              alignItems: "flex-start",
-              marginBottom: 20,
-            }}
-          >
+          {/* Main layout: form + preview */}
+          <section className="space-y-6 md:grid md:grid-cols-2 md:space-y-0 md:gap-6 items-start mb-4">
             {/* Left: form fields */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-4">
               {/* Position */}
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    marginBottom: 4,
-                    color: "var(--text-primary)",
-                  }}
-                >
+              <div className="space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                   Launcher position
                 </div>
-                <div style={{ fontSize: 12, marginBottom: 6 }}>
+                <div className="text-[12px] text-[color:var(--text-secondary)]">
                   Choose where the chat bubble appears on your pages.
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div className="flex gap-2">
                   {[
                     { id: "bottom-right", label: "Bottom right" },
                     { id: "bottom-left", label: "Bottom left" },
@@ -173,22 +154,12 @@ export const WidgetSettingsPanel: React.FC<WidgetSettingsPanelProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => setPosition(opt.id as any)}
-                        style={{
-                          flex: 1,
-                          borderRadius: 10,
-                          padding: "6px 8px",
-                          border: selected
-                            ? "1px solid #22c55e"
-                            : "1px solid var(--border-color)",
-                          background: selected
-                            ? "rgba(34,197,94,0.12)"
-                            : "transparent",
-                          color: selected
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                          cursor: "pointer",
-                          fontSize: 12,
-                        }}
+                        className={[
+                          "flex-1 rounded-lg px-3 py-1.5 text-[12px] border transition-colors",
+                          selected
+                            ? "border-emerald-500 bg-emerald-500/10 text-[color:var(--text-primary)]"
+                            : "border-[color:var(--border-color)] text-[color:var(--text-secondary)] hover:border-emerald-500/70 hover:bg-emerald-500/5",
+                        ].join(" ")}
                       >
                         {opt.label}
                       </button>
@@ -198,248 +169,105 @@ export const WidgetSettingsPanel: React.FC<WidgetSettingsPanelProps> = ({
               </div>
 
               {/* Colors */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      marginBottom: 4,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                     Launcher color
                   </div>
-                  <input
-                    type="color"
-                    value={launcherColor}
-                    onChange={(e) => setLauncherColor(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: 32,
-                      borderRadius: 8,
-                      border: "1px solid var(--border-color)",
-                      padding: 0,
-                      background: "transparent",
-                    }}
-                  />
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      marginBottom: 4,
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    Text & icon color
+                  <div className="flex items-center gap-2 rounded-lg border border-[color:var(--border-color)] bg-[color:var(--bg-subpanel)] px-3 py-2">
+                    <input
+                      type="color"
+                      value={launcherColor}
+                      onChange={(e) => setLauncherColor(e.target.value)}
+                      className="h-7 w-7 cursor-pointer rounded-md border border-black/10"
+                    />
+                    <span className="truncate text-[12px] text-[color:var(--text-secondary)]">
+                      {launcherColor}
+                    </span>
                   </div>
-                  <input
-                    type="color"
-                    value={textColor}
-                    onChange={(e) => setTextColor(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: 32,
-                      borderRadius: 8,
-                      border: "1px solid var(--border-color)",
-                      padding: 0,
-                      background: "transparent",
-                    }}
-                  />
                 </div>
-              </div>
 
-              {/* Theme toggle */}
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    marginBottom: 4,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  Default dashboard theme
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => onThemeChange("light")}
-                    style={{
-                      flex: 1,
-                      borderRadius: 999,
-                      padding: "6px 8px",
-                      border:
-                        theme === "light"
-                          ? "1px solid #22c55e"
-                          : "1px solid var(--border-color)",
-                      background:
-                        theme === "light"
-                          ? "rgba(34,197,94,0.12)"
-                          : "transparent",
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Light
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onThemeChange("dark")}
-                    style={{
-                      flex: 1,
-                      borderRadius: 999,
-                      padding: "6px 8px",
-                      border:
-                        theme === "dark"
-                          ? "1px solid #22c55e"
-                          : "1px solid var(--border-color)",
-                      background:
-                        theme === "dark"
-                          ? "rgba(34,197,94,0.12)"
-                          : "transparent",
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Dark
-                  </button>
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+                    Text &amp; icon color
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-[color:var(--border-color)] bg-[color:var(--bg-subpanel)] px-3 py-2">
+                    <input
+                      type="color"
+                      value={textColor}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="h-7 w-7 cursor-pointer rounded-md border border-black/10"
+                    />
+                    <span className="truncate text-[12px] text-[color:var(--text-secondary)]">
+                      {textColor}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Save button + status */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   disabled={saving}
                   onClick={handleSave}
-                  style={{
-                    borderRadius: 999,
-                    border: "none",
-                    padding: "8px 14px",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: saving ? "default" : "pointer",
-                    background: saving ? "#4b5563" : "#22c55e",
-                    color: "#022c22",
-                  }}
+                  className={[
+                    "inline-flex items-center rounded-full px-4 py-2 text-[13px] font-medium",
+                    saving
+                      ? "bg-slate-600 text-slate-200 cursor-default"
+                      : "bg-emerald-500 text-emerald-950 hover:bg-emerald-400 transition-colors",
+                  ].join(" ")}
                 >
                   {saving ? "Saving…" : "Save changes"}
                 </button>
+
                 {saved && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#22c55e",
-                    }}
-                  >
-                    Saved.
-                  </span>
+                  <span className="text-[12px] text-emerald-400">Saved.</span>
                 )}
+
                 {error && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#f97373",
-                    }}
-                  >
-                    {error}
-                  </span>
+                  <span className="text-[12px] text-rose-400">{error}</span>
                 )}
               </div>
             </div>
 
             {/* Right: live preview */}
             <div
-              style={{
-                borderRadius: 14,
-                border: "1px solid var(--border-color)",
-                padding: 14,
-                background: "var(--bg-subpanel)",
-                minHeight: 120,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent:
-                  position === "bottom-right" ? "flex-end" : "flex-start",
-              }}
+              className={[
+                "rounded-xl border border-[color:var(--border-color)] bg-[color:var(--bg-subpanel)] p-4 min-h-[140px] flex items-end",
+                position === "bottom-right" ? "justify-end" : "justify-start",
+              ].join(" ")}
             >
               <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  borderRadius: 999,
-                  padding: "6px 10px",
-                  background: launcherColor,
-                  color: textColor,
-                  fontSize: 12,
-                  boxShadow: "0 12px 30px rgba(15,23,42,0.45)",
-                  cursor: "default",
-                }}
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] shadow-[0_12px_30px_rgba(15,23,42,0.45)] cursor-default"
+                style={{ background: launcherColor, color: textColor }}
               >
                 <span
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    border: "2px solid rgba(255,255,255,0.7)",
-                  }}
+                  className="h-4.5 w-4.5 rounded-full border-[2px] border-white/70"
+                  style={{ width: 18, height: 18 }}
                 />
                 <span>Chat with us</span>
               </div>
             </div>
           </section>
 
-          {/* Install code */}
-          <section>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 6,
-              }}
-            >
+          {/* Install snippet */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
               <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    marginBottom: 2,
-                    color: "var(--text-primary)",
-                  }}
-                >
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                   Install on your website
                 </div>
-                <div style={{ fontSize: 12 }}>
+                <div className="text-[12px] text-[color:var(--text-secondary)]">
                   Paste this before the closing {"</body>"} tag on your site.
                 </div>
               </div>
             </div>
+
             <textarea
               readOnly
               value={installSnippet}
-              style={{
-                width: "100%",
-                minHeight: 140,
-                borderRadius: 10,
-                border: "1px solid var(--border-color)",
-                background: "var(--bg-subpanel)",
-                color: "var(--text-primary)",
-                fontFamily:
-                  "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                fontSize: 12,
-                padding: 10,
-                resize: "vertical",
-              }}
+              className="w-full min-h-[150px] rounded-xl border border-[color:var(--border-color)] bg-[color:var(--bg-subpanel)] text-[color:var(--text-primary)] font-mono text-[12px] p-3 resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500/70"
             />
           </section>
         </>

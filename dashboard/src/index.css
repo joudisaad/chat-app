@@ -93,6 +93,9 @@ html, body, #root {
 }
 
 body {
+  /* Allow vertical scroll so bottom UI (composer, sign-out, etc.) is reachable */
+  overflow-y: auto;
+  overflow-x: hidden;
   width: 100%;
   min-height: 100%;
   background: var(--bg-main);
@@ -1018,20 +1021,106 @@ body[data-theme="light"] .etiq-menu-bg {
   gap: 6px;
 }
 
-/* ----- Etiquette dropdown: solid background in light & dark ----- */
-
-/* Compact panel */
-.convo-etiquette-panel--compact {
-  padding: 4px 8px !important;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
+/* Row under the preview (assignee + seen/unread + tags + status) */
+.convo-item-bottom {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;             /* smaller text */
+  line-height: 1.3;
 }
 
-/* Dropdown label text */
-.convo-etiquette-label-text {
+/* Left side: assignee */
+.convo-item-assignee {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Right side container */
+.convo-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* “Seen by you / Seen by NAME” */
+.convo-item-seen-by {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.15); /* soft pill */
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+/* Unread badge: small pill, compact */
+.convo-item-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #10b981;           /* green bubble */
+  color: white;
+  font-size: 10px;
   font-weight: 600;
-  font-size: 13px;
-  color: var(--text-primary);
+}
+
+.convo-item-unread-count {
+  min-width: 14px;
+  text-align: center;
+}
+
+.convo-item-unread-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
   opacity: 0.9;
-  padding-left: 4px;
+}
+
+/* Status pill (open / pending / resolved) – keep it subtle */
+.convo-item-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Base convo item */
+.convo-item {
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Unread state */
+.convo-item.is-unread {
+  background: rgba(56, 189, 248, 0.06); /* soft cyan highlight */
+  border-left: 3px solid #0ea5e9;
+}
+
+/* Unread title a bit stronger */
+.convo-item.is-unread .convo-item-title {
+  font-weight: 600;
+}
+
+/* Small glowing dot on unread */
+.convo-item.is-unread::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.25);
+}
+
+/* Make sure the button is positioned for ::before */
+.convo-item {
+  position: relative;
+  padding-left: 24px; /* room for the dot */
 }

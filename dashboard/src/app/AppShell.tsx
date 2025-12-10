@@ -25,7 +25,7 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
 
   return (
     <div
-      className={`min-h-screen w-full flex transition-colors duration-200 ${
+      className={`h-screen w-full flex overflow-hidden transition-colors duration-200 ${
         isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"
       }`}
     >
@@ -38,7 +38,7 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
       />
 
       {/* MAIN */}
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         {/* TOP BAR */}
         <header
           className={`h-13 flex items-center justify-between px-4 border-b transition-colors duration-200 ${
@@ -84,7 +84,7 @@ export function AppShell({ theme, onThemeChange, team, onLogout }: Props) {
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="flex flex-1 min-h-0 flex-col">
+        <main className="flex flex-1 min-h-0 flex-col overflow-hidden">
           <CurrentPage theme={theme} onThemeChange={onThemeChange} team={team} />
         </main>
       </div>

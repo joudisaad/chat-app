@@ -10,7 +10,7 @@ export class AuthService {
     private usersService: UsersService,
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
@@ -78,6 +78,60 @@ export class AuthService {
         name: user.name,
       },
       team,
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const membership = await this.prisma.teamMembership.findFirst({
+      where: { userId },
+      include: { team: true },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      team: membership?.team ?? null,
+    };
+  }
+
+  async getProfileWithTeam(userId: string) {
+    const cleanId = userId?.trim();
+
+    if (!cleanId) {
+      throw new UnauthorizedException('Missing user id in token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: cleanId },
+      include: {
+        memberships: {
+          include: { team: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const primaryMembership = user.memberships[0] ?? null;
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      team: primaryMembership?.team ?? null,
     };
   }
 }

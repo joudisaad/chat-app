@@ -37,13 +37,19 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
         );
         client.data.userId = payload.sub;
         client.data.teamId = payload.teamId;
+
+        // Agent sockets join a team-wide room so they receive all team messages
+        if (payload.teamId) {
+          const teamRoom = `team:${payload.teamId}`;
+          client.join(teamRoom);
+        }
       } catch (e) {
         console.error('Invalid JWT on socket', e);
         client.disconnect();
         return;
       }
     } else if (teamId) {
-      // Widget : pour l’instant on accepte un teamId passé en auth (clé publique plus tard)
+      // Widget : for now we accept a teamId passed in auth (public key later)
       client.data.teamId = teamId;
     } else {
       console.warn('Socket without teamId or token');
@@ -82,6 +88,11 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
       teamId,
     );
 
+    // Emit to the specific room (widget + any agent joined to this room)
     this.server.to(payload.roomId).emit('new_message', message);
+
+    // Also emit to the team-wide room so all agents for this team get the event
+    const teamRoom = `team:${teamId}`;
+    this.server.to(teamRoom).emit('new_message', message);
   }
 }

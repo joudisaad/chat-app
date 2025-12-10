@@ -18,6 +18,10 @@ export class ConversationsService {
       status: c.status,
       assigneeId: c.assigneeId,
       assigneeName: c.assignee ? c.assignee.name : null,
+      unreadCount: typeof c.unreadCount === 'number' ? c.unreadCount : 0,
+      lastAgentReadAt: c.lastAgentReadAt ?? null,
+      lastReadByAgentId: c.lastReadByAgentId ?? null,
+      lastReadByAgentName: c.lastReadByAgent ? c.lastReadByAgent.name : null,
       etiquettes: (c.etiquettes || []).map((ce: any) => ({
         id: ce.etiquette.id,
         name: ce.etiquette.name,
@@ -36,6 +40,7 @@ export class ConversationsService {
       include: {
         assignee: true,
         inbox: true,
+        lastReadByAgent: true,
         etiquettes: {
           include: {
             etiquette: true,
@@ -106,6 +111,43 @@ export class ConversationsService {
       },
     });
   }
+
+// api/src/conversations/conversations.service.ts
+// api/src/conversations/conversations.service.ts
+
+async markAsRead(teamId: string, conversationId: string, agentId: string) {
+  // 1) Ensure this conversation belongs to the team
+  const convo = await this.prisma.conversation.findFirst({
+    where: { id: conversationId, teamId },
+    select: { id: true },
+  });
+
+  if (!convo) {
+    throw new NotFoundException('Conversation not found for this team');
+  }
+
+  // 2) Update by unique ID only
+  const updated = await this.prisma.conversation.update({
+    where: { id: conversationId },
+    data: {
+      lastAgentReadAt: new Date(),
+      lastReadByAgentId: agentId,
+      unreadCount: 0,
+    },
+    include: {
+      assignee: true,
+      inbox: true,
+      lastReadByAgent: true,
+      etiquettes: {
+        include: {
+          etiquette: true,
+        },
+      },
+    },
+  });
+
+  return this.mapConversationWithEtiquettes(updated);
+}
 
   async addEtiquetteToConversation(
     teamId: string,

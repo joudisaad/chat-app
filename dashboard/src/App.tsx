@@ -64,7 +64,7 @@ export function App() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_URL}/auth/me`, {
+        const res = await fetch(`${API_URL}/auth/me-full`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

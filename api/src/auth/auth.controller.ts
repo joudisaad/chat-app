@@ -18,9 +18,20 @@ export class AuthController {
     return this.authService.login(body.email, body.password);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  me(@Req() req: any) {
-    return req.user;
-  }
+@UseGuards(JwtAuthGuard)
+@Get('me')
+async me(@Req() req: any) {
+  const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+
+  return this.authService.getProfileWithTeam(userId);
+}
+
+@UseGuards(JwtAuthGuard)
+@Get('me-full')
+async meFull(@Req() req: any) {
+  const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+
+  return this.authService.getProfileWithTeam(userId);
+}
+  
 }
