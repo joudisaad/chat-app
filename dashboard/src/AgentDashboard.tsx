@@ -108,10 +108,9 @@ const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const socketRef = useRef<Socket | null>(null);
   const activeRoomRef = useRef<string | null>(null);
 
-  const token =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("CHATAPP_TOKEN")
-      : null;
+const token =
+  typeof window !== "undefined"
+    ? window.localStorage.getItem("CHATAPP_TOKEN"): null;
   const currentUserId = getUserIdFromToken(token);
       
 

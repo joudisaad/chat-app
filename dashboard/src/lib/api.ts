@@ -7,7 +7,7 @@ import type {
   AuthResponse,
 } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {

@@ -117,6 +117,11 @@ model User {
   memberships           TeamMembership[]
   assignedConversations Conversation[]   @relation("ConversationAssignee")
   lastReadConversations Conversation[]   @relation("ConversationLastRead")
+
+    // 2FA (TOTP) fields
+  twoFactorEnabled      Boolean  @default(false)
+  twoFactorSecret       String?  // base32 secret for TOTP
+  twoFactorBackupCodes  String?  // optional, JSON string of hashed backup codes
 }
 
 model TeamMembership {
