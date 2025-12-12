@@ -115,10 +115,16 @@ export class ConversationsService {
 // api/src/conversations/conversations.service.ts
 // api/src/conversations/conversations.service.ts
 
-async markAsRead(teamId: string, conversationId: string, agentId: string) {
-  // 1) Ensure this conversation belongs to the team
+async markAsRead(teamId: string, conversationIdentifier: string, agentId: string) {
+  // Allow passing either conversation.id or roomId from the frontend
   const convo = await this.prisma.conversation.findFirst({
-    where: { id: conversationId, teamId },
+    where: {
+      teamId,
+      OR: [
+        { id: conversationIdentifier },
+        { roomId: conversationIdentifier },
+      ],
+    },
     select: { id: true },
   });
 
@@ -126,9 +132,8 @@ async markAsRead(teamId: string, conversationId: string, agentId: string) {
     throw new NotFoundException('Conversation not found for this team');
   }
 
-  // 2) Update by unique ID only
   const updated = await this.prisma.conversation.update({
-    where: { id: conversationId },
+    where: { id: convo.id },
     data: {
       lastAgentReadAt: new Date(),
       lastReadByAgentId: agentId,
@@ -148,7 +153,6 @@ async markAsRead(teamId: string, conversationId: string, agentId: string) {
 
   return this.mapConversationWithEtiquettes(updated);
 }
-
   async addEtiquetteToConversation(
     teamId: string,
     conversationId: string,
@@ -241,5 +245,14 @@ async markAsRead(teamId: string, conversationId: string, agentId: string) {
   }
   async findAll(teamId: string) {
     return this.listForTeam(teamId);
+  }
+
+  // conversations.service.ts
+  async findByRoomId(teamId: string, roomId: string) {
+    const convo = await this.prisma.conversation.findFirst({
+      where: { teamId, roomId },
+    });
+    if (!convo) throw new NotFoundException('Conversation not found for this team');
+    return { ...convo, unreadCount: (convo as any).unreadCount ?? 0 };
   }
 }

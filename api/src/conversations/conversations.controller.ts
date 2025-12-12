@@ -1,12 +1,24 @@
 // api/src/conversations/conversations.controller.ts
-import { Controller, Get, Req, UseGuards, Body, Patch, Param, Post, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ConversationsService } from './conversations.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @Controller('conversations')
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
-  constructor(private readonly conversationsService: ConversationsService) {}
+  constructor(
+    private readonly conversationsService: ConversationsService,
+  ) {}
 
   @Get()
   async getConversations(@Req() req: any) {
@@ -20,33 +32,33 @@ export class ConversationsController {
     @Body('inboxId') inboxId: string | null,
     @Req() req: any,
   ) {
-    const teamId = req.user.teamId;
+    const teamId: string = req.user.teamId;
     return this.conversationsService.moveConversationToInbox(id, inboxId, teamId);
   }
 
-  // ✅ NEW — assign conversation to an agent
+  // assign conversation to an agent
   @Patch(':id/assign')
   async assignConversation(
     @Param('id') id: string,
     @Body('assigneeId') assigneeId: string | null,
     @Req() req: any,
   ) {
-    const teamId = req.user.teamId;
+    const teamId: string = req.user.teamId;
     return this.conversationsService.assignConversation(id, assigneeId, teamId);
   }
 
-  // ✅ NEW — update conversation status (OPEN/PENDING/RESOLVED)
+  // update conversation status (OPEN / PENDING / RESOLVED)
   @Patch(':id/status')
   async updateStatus(
     @Param('id') id: string,
     @Body('status') status: 'OPEN' | 'PENDING' | 'RESOLVED',
     @Req() req: any,
   ) {
-    const teamId = req.user.teamId;
+    const teamId: string = req.user.teamId;
     return this.conversationsService.updateStatus(id, status, teamId);
   }
 
-  // ✅ NEW — mark conversation as read by current agent
+  // mark conversation as read by current agent (id can be conversation.id or roomId)
   @Patch(':id/read')
   async markAsRead(
     @Param('id') id: string,
@@ -57,6 +69,7 @@ export class ConversationsController {
     return this.conversationsService.markAsRead(teamId, id, agentId);
   }
 
+  // legacy POST endpoint, same logic as above (used by older code)
   @Post(':id/mark-read')
   async markReadViaPost(
     @Param('id') id: string,
@@ -73,8 +86,12 @@ export class ConversationsController {
     @Param('conversationId') conversationId: string,
     @Param('etiquetteId') etiquetteId: string,
   ) {
-    const teamId = req.user.teamId;
-    return this.conversationsService.addEtiquetteToConversation(teamId, conversationId, etiquetteId);
+    const teamId: string = req.user.teamId;
+    return this.conversationsService.addEtiquetteToConversation(
+      teamId,
+      conversationId,
+      etiquetteId,
+    );
   }
 
   @Delete(':conversationId/etiquettes/:etiquetteId')
@@ -83,19 +100,19 @@ export class ConversationsController {
     @Param('conversationId') conversationId: string,
     @Param('etiquetteId') etiquetteId: string,
   ) {
-    const teamId = req.user.teamId;
-    return this.conversationsService.removeEtiquetteFromConversation(teamId, conversationId, etiquetteId);
-  }
-
-  @Patch(':id/mark-read')
-  @UseGuards(JwtAuthGuard)
-  async markRead(
-    @Param('id') id: string,
-    @Req() req: any,
-  ) {
     const teamId: string = req.user.teamId;
-    const agentId: string = req.user.userId ?? req.user.sub;
-
-    return this.conversationsService.markAsRead(teamId, id, agentId);
+    return this.conversationsService.removeEtiquetteFromConversation(
+      teamId,
+      conversationId,
+      etiquetteId,
+    );
   }
+    // GET /conversations/by-room/:roomId
+    // conversations.controller.ts
+    @UseGuards(JwtAuthGuard)
+    @Get('by-room/:roomId')
+    async getByRoom(@Req() req: any, @Param('roomId') roomId: string) {
+      const teamId = req.user.teamId;
+      return this.conversationsService.findByRoomId(teamId, roomId);
+    }
 }

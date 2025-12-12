@@ -79,6 +79,7 @@ export default function AgentDashboard({
   theme,
 }: AgentDashboardProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef<Conversation[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -158,6 +159,10 @@ const seenMessageIdsRef = useRef<Set<string>>(new Set());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   const loadInboxes = useCallback(async () => {
     if (!token) return;
@@ -258,6 +263,27 @@ const handleNewMessage = (msg: Message) => {
 
     const isActive = activeRoomRef.current === msg.roomId;
     const isVisitor = msg.sender === "Visitor";
+
+    // If we're currently viewing this conversation and the visitor sends a message,
+    // mark it as read on the server right away so it doesn't stay unread after refresh.
+    if (isActive && isVisitor && token) {
+      const existingForMark = conversationsRef.current.find(
+        (c) => c.roomId === msg.roomId
+      );
+      if (existingForMark) {
+        fetch(
+          `${API_URL}/conversations/${encodeURIComponent(
+            existingForMark.id
+          )}/mark-read`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ).catch((err) => {
+          console.error("Failed to mark active conversation as read", err);
+        });
+      }
+    }
 
     if (index !== -1) {
       const updated = [...prev];
@@ -482,35 +508,87 @@ useEffect(() => {
   };
 
 const handleSelectRoom = async (roomId: string) => {
+  // Always switch the active room immediately
   setActiveRoomId(roomId);
 
-  if (!token) return;
-
   const convo = conversations.find((c) => c.roomId === roomId);
-  if (!convo) return;
+  if (!token || !convo) return;
 
+  // Optimistically clear unread in the UI
+  setConversations((prev) =>
+    prev.map((c) =>
+      c.id === convo.id
+        ? {
+            ...c,
+            unreadCount: 0,
+          }
+        : c,
+    ),
+  );
+
+  // If this is a placeholder conversation created from the socket
+  // (we used roomId as id), skip the API call to avoid 404.
+// If placeholder (id === roomId), try fetching the real conversation row first
+let conversationId = convo.id;
+
+if (convo.id === roomId) {
   try {
-    const res = await fetch(`${API_URL}/conversations/${convo.id}/mark-read`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const res = await fetch(`${API_URL}/conversations/by-room/${encodeURIComponent(roomId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (!res.ok) {
-      console.error("Failed to mark as read", await res.text());
-      return;
+    if (res.ok) {
+      const realConvo = await res.json();
+      conversationId = realConvo.id;
+
+      // update local placeholder with real ID
+      setConversations(prev =>
+        prev.map(c =>
+          c.roomId === roomId
+            ? { ...realConvo }
+            : c
+        )
+      );
+    } else {
+      console.warn("Real conversation not found yet, delaying mark-read.");
+      return; // Stop here; next click will work
     }
-
-    const updated = await res.json();
-
-    // VERY IMPORTANT: merge the updated conversation into state
-    setConversations((prev) =>
-      prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
-    );
   } catch (err) {
-    console.error("Error marking as read", err);
+    console.error("Failed to fetch real conversation", err);
+    return;
   }
+}
+
+try {
+  const res = await fetch(
+    `${API_URL}/conversations/${encodeURIComponent(conversationId)}/mark-read`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+
+  if (!res.ok) {
+    console.error("Failed to mark as read", await res.text());
+    return;
+  }
+
+  const updated = (await res.json()) as Conversation;
+
+  // Merge server state: unreadCount, lastAgentReadAt, lastReadByAgentName, etc.
+  setConversations((prev) =>
+    prev.map((c) =>
+      c.id === updated.id
+        ? {
+            ...c,
+            ...updated,
+          }
+        : c,
+    ),
+  );
+} catch (err) {
+  console.error("Error marking as read", err);
+}
 };
 
 
